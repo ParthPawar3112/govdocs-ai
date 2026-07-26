@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     # Vite's default dev server port.
     FRONTEND_ORIGIN: str = "http://localhost:5173"
 
+    # --- Authentication ---
+    # This value is supplied through .env and signs short-lived access tokens.
+    JWT_SECRET_KEY: str = "change-this-development-secret-before-production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

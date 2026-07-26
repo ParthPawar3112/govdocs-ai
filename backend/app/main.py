@@ -17,7 +17,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.database import engine, get_db
+from app.db.database import Base, engine, get_db
+from app.models.user import User
+from app.routers.auth import router as auth_router
+from app.services.seed import seed_default_users
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -33,6 +36,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Authentication endpoints are kept in their own router so future modules can
+# reuse the current-user dependency without expanding this application module.
+app.include_router(auth_router)
+
 
 @app.on_event("startup")
 def verify_database_on_startup() -> None:
@@ -40,6 +47,8 @@ def verify_database_on_startup() -> None:
     Fails fast and loudly if the SQLite file can't be created/opened,
     instead of silently deferring the error to the first real request.
     """
+    Base.metadata.create_all(bind=engine)
+    seed_default_users()
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     print(f"[GovDocs AI] Database connection verified -> {settings.DATABASE_URL}")
