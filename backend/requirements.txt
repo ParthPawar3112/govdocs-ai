@@ -1,0 +1,15 @@
+# Phase 1 - Project Setup
+# These are the ONLY packages needed to run the health-check backend.
+# Deliberately excludes JWT/auth libraries, EasyOCR, and the Gemini SDK --
+# those are added to this file only when we build the module that needs
+# them (Login, OCR, AI Metadata Extraction). This keeps today's install
+# fast (seconds, not minutes) and avoids pulling in heavy packages
+# (e.g. EasyOCR depends on PyTorch, a multi-GB download) before they're
+# actually used.
+
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+sqlalchemy==2.0.36
