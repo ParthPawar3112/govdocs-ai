@@ -1,11 +1,50 @@
-// Protected dashboard view displaying the authenticated user and zero-value placeholders.
-import Sidebar from "../components/Sidebar";
-import StatCard from "../components/StatCard";
+// Protected dashboard entry point. Owns the two pieces of state the whole
+// authenticated shell needs (which section is active, when the session
+// started) and renders the right content inside DashboardLayout.
+import { useState } from "react";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import DashboardHome from "../components/dashboard/DashboardHome";
+import ProfileSection from "../components/dashboard/ProfileSection";
+import PlaceholderSection from "../components/dashboard/PlaceholderSection";
+import { getSection } from "../config/navigation";
 import { useAuth } from "../hooks/useAuth";
 
-const stats = [["Documents", "bg-blue-600"], ["Pending", "bg-amber-500"], ["Approved", "bg-emerald-500"], ["Rejected", "bg-red-500"]];
-
 export default function DashboardPage() {
-  const { logout, user } = useAuth();
-  return <div className="min-h-screen bg-slate-100 md:flex"><Sidebar onLogout={logout} /><main className="flex-1 p-6 sm:p-10"><header className="mb-8"><p className="text-sm font-medium text-blue-700">Dashboard</p><h1 className="mt-1 text-3xl font-bold text-slate-900">Welcome, {user.username}</h1><p className="mt-2 text-slate-500">Role: <span className="font-medium text-slate-700">{user.role}</span></p></header><section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">{stats.map(([label, accent]) => <StatCard key={label} label={label} value="0" accent={accent} />)}</section></main></div>;
+  const { user, logout } = useAuth();
+  const [activeSection, setActiveSection] = useState("dashboard");
+
+  // Real session-start timestamp, captured once. This component only ever
+  // mounts once `user` exists (see App.jsx), so "now" genuinely is sign-in
+  // time - it's shared with the navbar's notification and the dashboard's
+  // activity timeline so both show the same real event instead of drifting.
+  const [sessionStartedAt] = useState(() => new Date());
+
+  const renderSection = () => {
+    switch (activeSection) {
+      case "dashboard":
+        return (
+          <DashboardHome
+            user={user}
+            sessionStartedAt={sessionStartedAt}
+            onNavigate={setActiveSection}
+          />
+        );
+      case "profile":
+        return <ProfileSection user={user} onLogout={logout} />;
+      default:
+        return <PlaceholderSection section={getSection(activeSection)} />;
+    }
+  };
+
+  return (
+    <DashboardLayout
+      user={user}
+      onLogout={logout}
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      sessionStartedAt={sessionStartedAt}
+    >
+      {renderSection()}
+    </DashboardLayout>
+  );
 }
