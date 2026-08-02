@@ -7,8 +7,20 @@ security requirement). Auth itself is untouched - this router only consumes
 the existing get_current_user dependency from Phase 2.
 """
 from datetime import date as date_type, datetime, timezone
+import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -23,13 +35,17 @@ from app.schemas.document import (
     DocumentStatsResponse,
     DocumentUpdate,
 )
-from app.services import file_storage
+from app.services import file_storage, ocr_status
+from app.services.ocr_service import extract_text, process_document_ocr
+
+logger = logging.getLogger("govdocs.documents")
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     title: str = Form(..., min_length=1, max_length=255),
     department: str = Form(...),
     description: str | None = Form(None),
@@ -62,6 +78,14 @@ async def upload_document(
     db.add(document)
     db.commit()
     db.refresh(document)
+
+    # OCR runs after the response is sent (BackgroundTasks), so upload stays
+    # fast regardless of file size. Marked "processing" synchronously, right
+    # now, so the response we're about to return already reflects it
+    # honestly instead of a misleading "pending" that flips a moment later.
+    ocr_status.mark_processing(document.id)
+    background_tasks.add_task(process_document_ocr, document.id)
+
     return document
 
 
@@ -144,6 +168,38 @@ def get_document(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document
+
+
+@router.post("/{document_id}/extract-text", response_model=DocumentResponse)
+def extract_document_text(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Document:
+    """
+    Manual (re)run of OCR - used both to retry a failed automatic run and to
+    process documents that predate this phase. Synchronous by design: this
+    is a single user-initiated action worth waiting a few seconds for a
+    definitive answer, unlike the upload flow which must never block.
+    """
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    ocr_status.mark_processing(document_id)
+    try:
+        document.ocr_text = extract_text(document.filepath, document.filetype)
+        db.commit()
+        db.refresh(document)
+        ocr_status.mark_done(document_id)
+        return document
+    except Exception:
+        logger.exception(f"Manual OCR retry failed for document {document_id}")
+        ocr_status.mark_failed(document_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to extract text. Please try again.",
+        )
 
 
 @router.put("/{document_id}", response_model=DocumentResponse)

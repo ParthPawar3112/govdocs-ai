@@ -18,6 +18,10 @@ export const deleteDocumentRequest = (id) => client.delete(`/documents/${id}`);
 
 export const getDocumentStatsRequest = () => client.get("/documents/stats");
 
+// Phase 5 - manual (re)run of OCR, used both by the initial-failure Retry
+// button and to backfill OCR on documents uploaded before this phase existed.
+export const extractTextRequest = (id) => client.post(`/documents/${id}/extract-text`);
+
 // Fetched as a blob (not navigated to directly) so the shared axios instance
 // can attach the Authorization header - a plain <a href> or <img src> can't
 // send bearer tokens, and these documents are access-controlled by design.

@@ -19,3 +19,15 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.20
+
+# --- OCR (Phase 5) ---
+# Default engine: pytesseract + Tesseract binary. Chosen over EasyOCR by
+# default because it has no PyTorch dependency, installs in seconds, and is
+# reliable on Windows/newer Python where EasyOCR+torch wheels can lag behind.
+# Windows also needs the Tesseract *binary* installed separately - see
+# README "OCR Engine" section. To use EasyOCR instead, set OCR_ENGINE=easyocr
+# in .env and separately `pip install easyocr` (not included here - it pulls
+# in PyTorch, a multi-GB install).
+pymupdf==1.28.0
+pytesseract==0.3.13
+Pillow==12.3.0

@@ -1,12 +1,17 @@
 // Fetches the file through the authenticated API (not a raw <iframe src>,
 // since that can't carry a Bearer token) and previews it via an object URL.
-// The Download button reuses the same blob rather than re-fetching.
-import { useEffect, useState } from "react";
+// Also tracks the document's OCR state: fetches the latest record on open,
+// and polls while ocr_status is "processing" (e.g. viewing a document
+// moments after upload, while background OCR is still running).
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
-import { fetchDocumentBlobRequest } from "../../api/documents";
+import ExtractedTextPanel from "./ExtractedTextPanel";
+import { extractTextRequest, fetchDocumentBlobRequest, getDocumentRequest } from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
+
+const POLL_INTERVAL_MS = 2500;
 
 export default function DocumentViewerModal({ isOpen, onClose, document: doc }) {
   const { showToast } = useToast();
@@ -14,6 +19,11 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [liveDoc, setLiveDoc] = useState(doc);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const pollTimerRef = useRef(null);
+
+  // File preview - unchanged from Phase 4, just the blob-fetch part.
   useEffect(() => {
     if (!isOpen || !doc) return undefined;
 
@@ -34,6 +44,53 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
       setBlobUrl(null);
     };
   }, [isOpen, doc]);
+
+  // OCR state - fetch fresh on open, then poll only while processing.
+  useEffect(() => {
+    if (!isOpen || !doc) return undefined;
+
+    setLiveDoc(doc);
+    let isCancelled = false;
+
+    const fetchLatest = async () => {
+      try {
+        const { data } = await getDocumentRequest(doc.id);
+        if (isCancelled) return;
+        setLiveDoc(data);
+        if (data.ocr_status === "processing") {
+          pollTimerRef.current = setTimeout(fetchLatest, POLL_INTERVAL_MS);
+        }
+      } catch {
+        // Viewer already has the last-known doc state; a transient poll
+        // failure isn't worth surfacing as an error banner.
+      }
+    };
+
+    fetchLatest();
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(pollTimerRef.current);
+    };
+  }, [isOpen, doc]);
+
+  const handleRetryOcr = async () => {
+    if (!liveDoc) return;
+    setIsRetrying(true);
+    try {
+      const { data } = await extractTextRequest(liveDoc.id);
+      setLiveDoc(data);
+      showToast("OCR completed successfully", "success");
+    } catch (requestError) {
+      const message = requestError.response?.data?.detail || "Unable to extract text.";
+      showToast(message, "error");
+      // Reflect the failure immediately rather than waiting on a poll -
+      // the backend has already recorded it in its in-memory tracker.
+      setLiveDoc((current) => ({ ...current, ocr_status: "failed" }));
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   const handleDownload = () => {
     if (!blobUrl || !doc) return;
@@ -75,6 +132,16 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
             Download
           </Button>
         </div>
+
+        {liveDoc && (
+          <ExtractedTextPanel
+            ocrStatus={liveDoc.ocr_status}
+            ocrText={liveDoc.ocr_text}
+            originalFilename={doc.original_filename}
+            onRetry={handleRetryOcr}
+            isRetrying={isRetrying}
+          />
+        )}
       </div>
     </Modal>
   );

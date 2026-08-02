@@ -34,6 +34,19 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
 
+    # --- OCR (Phase 5) ---
+    # "tesseract" is the default: a thin wrapper around the Tesseract binary,
+    # no heavy ML dependencies, and reliably installable on Windows even with
+    # newer Python versions. "easyocr" is supported and fully implemented,
+    # but depends on PyTorch (multi-GB, sometimes lacks Windows wheels for
+    # brand-new Python releases) - switch to it by changing this one value
+    # once torch is confirmed working in your environment, no code changes
+    # needed. See README "OCR Engine" section for the Windows Tesseract setup.
+    OCR_ENGINE: str = "tesseract"
+    # Only needed on Windows if `tesseract` isn't on PATH, e.g.:
+    # r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    TESSERACT_CMD: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

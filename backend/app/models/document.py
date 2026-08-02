@@ -35,3 +35,7 @@ class Document(Base):
     )
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="Pending", index=True)
+
+    # Phase 5 - the ONE field this module adds. Nullable: empty until OCR
+    # runs (automatically after upload, or via manual retry).
+    ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)

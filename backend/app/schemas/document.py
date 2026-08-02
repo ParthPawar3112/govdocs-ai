@@ -1,11 +1,13 @@
-"""Request and response schemas for the Phase 4 Document Management API."""
+"""Request and response schemas for the Phase 4 Document Management API,
+extended in Phase 5 with OCR text and status."""
 
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.core.constants import DEPARTMENTS, DOCUMENT_STATUSES
+from app.services import ocr_status as ocr_status_tracker
 
 DepartmentLiteral = Literal[DEPARTMENTS]  # type: ignore[valid-type]
 StatusLiteral = Literal[DOCUMENT_STATUSES]  # type: ignore[valid-type]
@@ -24,8 +26,16 @@ class DocumentResponse(BaseModel):
     uploaded_by: str
     upload_date: datetime
     status: str
+    ocr_text: str | None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def ocr_status(self) -> str:
+        """'pending' | 'processing' | 'completed' | 'failed'. Derived, not
+        stored - see app/services/ocr_status.py for why."""
+        return ocr_status_tracker.get_status(self.id, self.ocr_text)
 
 
 class DocumentListResponse(BaseModel):
