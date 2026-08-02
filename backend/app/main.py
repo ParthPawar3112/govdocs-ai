@@ -1,15 +1,10 @@
 """
 GovDocs AI - Smart Digital Documentation System
-FastAPI application entrypoint - Phase 1 (Project Setup).
+FastAPI application entrypoint.
 
-This phase intentionally contains ONLY:
-- app startup
-- CORS configuration
-- a database connectivity check
-- a /api/health endpoint
-
-No routers, models, or business logic exist yet. Those arrive one
-module at a time, starting with Login.
+Mounts: authentication (Phase 2), document management (Phase 4), and the
+Phase 1 health check. Business logic itself lives in each module's router/
+service files, not here - this file only wires the app together.
 """
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,8 +13,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.database import Base, engine, get_db
+from app.models.document import Document  # noqa: F401 - registers table with Base.metadata
 from app.models.user import User
 from app.routers.auth import router as auth_router
+from app.routers.documents import router as documents_router
 from app.services.seed import seed_default_users
 
 app = FastAPI(
@@ -39,6 +36,7 @@ app.add_middleware(
 # Authentication endpoints are kept in their own router so future modules can
 # reuse the current-user dependency without expanding this application module.
 app.include_router(auth_router)
+app.include_router(documents_router)
 
 
 @app.on_event("startup")

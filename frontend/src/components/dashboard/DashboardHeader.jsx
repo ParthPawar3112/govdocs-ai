@@ -1,6 +1,6 @@
 import { formatFullDate } from "../../utils/format";
 
-export default function DashboardHeader({ username, pendingCount, documentCount }) {
+export default function DashboardHeader({ username, pendingCount, documentCount, uploadedToday }) {
   const today = new Date();
 
   return (
@@ -13,8 +13,11 @@ export default function DashboardHeader({ username, pendingCount, documentCount 
           Welcome back, {username}
         </h1>
         <p className="mt-1.5 text-sm text-ink-soft">
-          {formatFullDate(today)} &middot; You have {pendingCount} pending approvals and{" "}
-          {documentCount} documents on file.
+          {formatFullDate(today)} &middot; {pendingCount} pending approval
+          {pendingCount === 1 ? "" : "s"} &middot; {documentCount} document
+          {documentCount === 1 ? "" : "s"} on file
+          {uploadedToday > 0 &&
+            ` \u00b7 ${uploadedToday} uploaded today`}
         </p>
       </div>
     </div>

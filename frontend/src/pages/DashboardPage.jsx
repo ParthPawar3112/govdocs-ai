@@ -6,6 +6,9 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import DashboardHome from "../components/dashboard/DashboardHome";
 import ProfileSection from "../components/dashboard/ProfileSection";
 import PlaceholderSection from "../components/dashboard/PlaceholderSection";
+import DocumentsSection from "../components/documents/DocumentsSection";
+import ToastContainer from "../components/ui/Toast";
+import { ToastProvider } from "../context/ToastContext";
 import { getSection } from "../config/navigation";
 import { useAuth } from "../hooks/useAuth";
 
@@ -29,6 +32,8 @@ export default function DashboardPage() {
             onNavigate={setActiveSection}
           />
         );
+      case "documents":
+        return <DocumentsSection />;
       case "profile":
         return <ProfileSection user={user} onLogout={logout} />;
       default:
@@ -37,14 +42,17 @@ export default function DashboardPage() {
   };
 
   return (
-    <DashboardLayout
-      user={user}
-      onLogout={logout}
-      activeSection={activeSection}
-      onSectionChange={setActiveSection}
-      sessionStartedAt={sessionStartedAt}
-    >
-      {renderSection()}
-    </DashboardLayout>
+    <ToastProvider>
+      <DashboardLayout
+        user={user}
+        onLogout={logout}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+        sessionStartedAt={sessionStartedAt}
+      >
+        {renderSection()}
+      </DashboardLayout>
+      <ToastContainer />
+    </ToastProvider>
   );
 }

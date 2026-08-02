@@ -13,7 +13,7 @@ import {
 
 export const NAV_SECTIONS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, live: true },
-  { key: "documents", label: "Documents", icon: FileText, phase: "Phase 4 - Document Upload" },
+  { key: "documents", label: "Documents", icon: FileText, live: true },
   { key: "search", label: "Smart Search", icon: Search, phase: "Phase 6 - Smart Search" },
   { key: "workflow", label: "Workflow", icon: GitBranch, phase: "Phase 7 - Approval Workflow" },
   { key: "audit", label: "Audit Logs", icon: History, phase: "Phase 8 - Audit Logs" },
