@@ -7,4 +7,6 @@ python -m uvicorn app.main:app --reload --port 8000
 
 //Frontend : 
 
-
+cd "C:\PROJECT HACATHON\govdocs-ai-phase1-setup\govdocs-ai main\frontend"
+npm install
+npm run dev
