@@ -10,3 +10,6 @@ python -m uvicorn app.main:app --reload --port 8000
 cd "C:\PROJECT HACATHON\govdocs-ai-phase1-setup\govdocs-ai main\frontend"
 npm install
 npm run dev
+
+
+//ApI Key : https://aistudio.google.com/api-keys?project=gen-lang-client-0308456906
