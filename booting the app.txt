@@ -1,0 +1,10 @@
+
+//Backend : 
+
+cd "C:\PROJECT HACATHON\govdocs-ai-phase1-setup\govdocs-ai main\backend"
+.\.venv\Scripts\Activate
+python -m uvicorn app.main:app --reload --port 8000
+
+//Frontend : 
+
+
