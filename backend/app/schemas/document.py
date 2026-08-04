@@ -1,5 +1,5 @@
 """Request and response schemas for the Phase 4 Document Management API,
-extended in Phase 5 with OCR text and status."""
+extended in Phase 5 with OCR text/status and Phase 6 with AI metadata."""
 
 from datetime import datetime
 from typing import Literal
@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.core.constants import DEPARTMENTS, DOCUMENT_STATUSES
+from app.services import ai_status as ai_status_tracker
 from app.services import ocr_status as ocr_status_tracker
 
 DepartmentLiteral = Literal[DEPARTMENTS]  # type: ignore[valid-type]
@@ -28,6 +29,16 @@ class DocumentResponse(BaseModel):
     status: str
     ocr_text: str | None
 
+    # Phase 6 - exactly the 8 fields that phase specifies.
+    ai_title: str | None
+    ai_summary: str | None
+    ai_department: str | None
+    ai_category: str | None
+    ai_keywords: list[str] | None
+    ai_confidence: float | None
+    ai_processed: bool
+    ai_error: str | None
+
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field
@@ -36,6 +47,14 @@ class DocumentResponse(BaseModel):
         """'pending' | 'processing' | 'completed' | 'failed'. Derived, not
         stored - see app/services/ocr_status.py for why."""
         return ocr_status_tracker.get_status(self.id, self.ocr_text)
+
+    @computed_field
+    @property
+    def ai_status(self) -> str:
+        """'pending' | 'processing' | 'completed' | 'failed'. Derived from
+        ai_processed/ai_error plus the in-memory tracker for the
+        in-flight case - see app/services/ai_status.py."""
+        return ai_status_tracker.get_status(self.id, self.ai_processed, self.ai_error)
 
 
 class DocumentListResponse(BaseModel):

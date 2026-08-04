@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -36,6 +36,18 @@ class Document(Base):
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="Pending", index=True)
 
-    # Phase 5 - the ONE field this module adds. Nullable: empty until OCR
+    # Phase 5 - the ONE field that module adds. Nullable: empty until OCR
     # runs (automatically after upload, or via manual retry).
     ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Phase 6 - exactly the 8 fields specified for AI Metadata Extraction.
+    # All nullable/defaulted so existing rows (and OCR-only documents where
+    # AI hasn't run yet) remain perfectly valid.
+    ai_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_department: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ai_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ai_keywords: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    ai_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ai_processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_error: Mapped[str | None] = mapped_column(Text, nullable=True)

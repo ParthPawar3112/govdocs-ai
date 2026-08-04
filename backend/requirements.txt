@@ -9,8 +9,11 @@
 
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
-pydantic==2.10.3
-pydantic-settings==2.6.1
+# Bumped from 2.10.3 in Phase 6: google-genai requires pydantic>=2.12.5.
+# Verified compatible with fastapi==0.115.6 and every existing schema/config
+# in this project - see Phase 6 testing notes.
+pydantic==2.12.5
+pydantic-settings==2.14.2
 python-dotenv==1.0.1
 sqlalchemy==2.0.36
 passlib[bcrypt]==1.7.4
@@ -31,3 +34,8 @@ python-multipart==0.0.20
 pymupdf==1.28.0
 pytesseract==0.3.13
 Pillow==12.3.0
+
+# --- AI Metadata Extraction (Phase 6) ---
+# Official Google Gen AI SDK. Lightweight, pure-Python, no heavy transitive
+# deps (unlike EasyOCR's torch) - installs in seconds.
+google-genai==2.16.0

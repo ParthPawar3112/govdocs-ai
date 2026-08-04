@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.database import Base, engine, get_db
-from app.db.migrate import ensure_ocr_text_column
+from app.db.migrate import ensure_ai_metadata_columns, ensure_ocr_text_column
 from app.models.document import Document  # noqa: F401 - registers table with Base.metadata
 from app.models.user import User
 from app.routers.auth import router as auth_router
@@ -48,6 +48,7 @@ def verify_database_on_startup() -> None:
     """
     Base.metadata.create_all(bind=engine)
     ensure_ocr_text_column(engine)
+    ensure_ai_metadata_columns(engine)
     seed_default_users()
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))

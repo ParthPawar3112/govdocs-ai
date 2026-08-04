@@ -11,10 +11,8 @@ render PDF pages to images, run the configured engine, return the text.
 Everything about *when* OCR runs (on upload vs. on retry) lives in the
 router, not here - this module only knows how to turn a file into text.
 """
-
 import io
 import logging
-import os
 
 from PIL import Image
 
@@ -34,56 +32,27 @@ _easyocr_reader = None
 
 
 def _pdf_to_images(filepath: str) -> list[Image.Image]:
-    """
-    Renders every page of a PDF to a PIL Image via PyMuPDF.
-    No external Poppler dependency required.
-    """
+    """Renders every page of a PDF to a PIL Image via PyMuPDF - no external
+    binary required (unlike poppler/pdf2image), which matters for a smooth
+    Windows install."""
     import fitz  # PyMuPDF
 
     images: list[Image.Image] = []
-
     with fitz.open(filepath) as pdf:
         for page in pdf:
             pixmap = page.get_pixmap(dpi=200)
             images.append(Image.open(io.BytesIO(pixmap.tobytes("png"))))
-
     return images
 
 
 def _run_tesseract(images: list[Image.Image]) -> str:
     import pytesseract
 
-    # 1. Use path from .env if provided
-    if getattr(settings, "TESSERACT_CMD", None):
+    if settings.TESSERACT_CMD:
         pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
 
-    else:
-        # 2. Try common Windows install locations
-        possible_paths = [
-            r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-            r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        ]
-
-        for path in possible_paths:
-            if os.path.exists(path):
-                pytesseract.pytesseract.tesseract_cmd = path
-                break
-
-    # 3. Verify executable exists
-    if not os.path.exists(pytesseract.pytesseract.tesseract_cmd):
-        raise RuntimeError(
-            "Tesseract OCR executable not found. "
-            "Install Tesseract OCR or configure TESSERACT_CMD in .env."
-        )
-
-    pages = []
-
-    for image in images:
-        text = pytesseract.image_to_string(image)
-        if text.strip():
-            pages.append(text.strip())
-
-    return "\n\n".join(pages)
+    pages = [pytesseract.image_to_string(image) for image in images]
+    return "\n\n".join(page.strip() for page in pages if page.strip())
 
 
 def _run_easyocr(images: list[Image.Image]) -> str:
@@ -91,20 +60,13 @@ def _run_easyocr(images: list[Image.Image]) -> str:
     import easyocr
 
     global _easyocr_reader
-
     if _easyocr_reader is None:
         _easyocr_reader = easyocr.Reader(["en"])
 
     pages = []
-
     for image in images:
-        lines = _easyocr_reader.readtext(
-            np.array(image),
-            detail=0,
-            paragraph=True,
-        )
+        lines = _easyocr_reader.readtext(np.array(image), detail=0, paragraph=True)
         pages.append("\n".join(lines))
-
     return "\n\n".join(page.strip() for page in pages if page.strip())
 
 
@@ -112,29 +74,27 @@ def _run_configured_engine(images: list[Image.Image]) -> str:
     if settings.OCR_ENGINE == "easyocr":
         try:
             return _run_easyocr(images)
-
         except ImportError:
             logger.warning(
-                "EasyOCR is not installed. Falling back to Tesseract."
+                "OCR_ENGINE=easyocr but the easyocr package isn't installed - "
+                "falling back to Tesseract for this request. Run "
+                "`pip install easyocr` to use EasyOCR, or set OCR_ENGINE=tesseract "
+                "in .env to silence this warning."
             )
             return _run_tesseract(images)
-
     return _run_tesseract(images)
 
 
 def extract_text(filepath: str, filetype: str) -> str:
-    """
-    Reads the file and extracts text.
-    """
-
+    """Reads the file at `filepath`, detects handling by `filetype`, and
+    returns extracted text. Raises on unsupported types or read failures -
+    callers are responsible for catching and recording failure state."""
     filetype = filetype.lower()
 
     if filetype in IMAGE_TYPES:
         images = [Image.open(filepath)]
-
     elif filetype in PDF_TYPES:
         images = _pdf_to_images(filepath)
-
     else:
         raise ValueError(f"OCR does not support file type: {filetype}")
 
@@ -143,35 +103,39 @@ def extract_text(filepath: str, filetype: str) -> str:
 
 def process_document_ocr(document_id: int) -> None:
     """
-    Background task entry point.
+    Entry point for the automatic, post-upload OCR run. Designed to be
+    handed to FastAPI's BackgroundTasks, so it owns its own DB session
+    rather than reusing the request's (which is closed by the time a
+    background task executes).
+
+    On success, immediately chains into AI metadata extraction (Phase 6),
+    per that phase's trigger condition ("begins immediately after OCR
+    completes successfully"). Called as a plain function, not scheduled as
+    a *new* BackgroundTask - we're already executing inside a background
+    worker thread here, so the HTTP request/response was never at risk of
+    blocking either way; this just continues that same background work.
     """
-
     db = SessionLocal()
-
     try:
         document = db.get(Document, document_id)
-
         if document is None:
             return
 
-        text = extract_text(
-            document.filepath,
-            document.filetype,
-        )
-
+        text = extract_text(document.filepath, document.filetype)
         document.ocr_text = text
-
         db.commit()
-
         ocr_status.mark_done(document_id)
-
-        logger.info(
-            f"OCR completed for document {document_id} ({len(text)} chars)"
-        )
-
+        logger.info(f"OCR completed for document {document_id} ({len(text)} chars)")
     except Exception:
         logger.exception(f"OCR failed for document {document_id}")
         ocr_status.mark_failed(document_id)
-
+        return
     finally:
         db.close()
+
+    # Deliberately outside the try/except/finally above: an AI failure must
+    # never be mislabeled as an OCR failure, and OCR's own DB session is
+    # already closed by this point - process_document_ai opens its own.
+    from app.services.ai_service import process_document_ai
+
+    process_document_ai(document_id)

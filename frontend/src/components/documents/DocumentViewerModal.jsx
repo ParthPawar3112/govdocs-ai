@@ -1,14 +1,21 @@
 // Fetches the file through the authenticated API (not a raw <iframe src>,
 // since that can't carry a Bearer token) and previews it via an object URL.
-// Also tracks the document's OCR state: fetches the latest record on open,
-// and polls while ocr_status is "processing" (e.g. viewing a document
-// moments after upload, while background OCR is still running).
+// Also tracks the document's OCR and AI state: fetches the latest record on
+// open, and polls while EITHER ocr_status or ai_status is "processing" -
+// covers viewing a document moments after upload, while OCR and then AI
+// (which starts right after OCR finishes) are both still running.
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Download, Loader2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import ExtractedTextPanel from "./ExtractedTextPanel";
-import { extractTextRequest, fetchDocumentBlobRequest, getDocumentRequest } from "../../api/documents";
+import AIAnalysisPanel from "./AIAnalysisPanel";
+import {
+  extractMetadataRequest,
+  extractTextRequest,
+  fetchDocumentBlobRequest,
+  getDocumentRequest,
+} from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
 
 const POLL_INTERVAL_MS = 2500;
@@ -20,7 +27,8 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
   const [error, setError] = useState("");
 
   const [liveDoc, setLiveDoc] = useState(doc);
-  const [isRetrying, setIsRetrying] = useState(false);
+  const [isRetryingOcr, setIsRetryingOcr] = useState(false);
+  const [isRetryingAi, setIsRetryingAi] = useState(false);
   const pollTimerRef = useRef(null);
 
   // File preview - unchanged from Phase 4, just the blob-fetch part.
@@ -45,7 +53,9 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
     };
   }, [isOpen, doc]);
 
-  // OCR state - fetch fresh on open, then poll only while processing.
+  // OCR + AI state - fetch fresh on open, then poll while either is in
+  // flight. AI only ever starts once OCR completes, so this one loop
+  // naturally covers both stages in sequence.
   useEffect(() => {
     if (!isOpen || !doc) return undefined;
 
@@ -57,7 +67,7 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
         const { data } = await getDocumentRequest(doc.id);
         if (isCancelled) return;
         setLiveDoc(data);
-        if (data.ocr_status === "processing") {
+        if (data.ocr_status === "processing" || data.ai_status === "processing") {
           pollTimerRef.current = setTimeout(fetchLatest, POLL_INTERVAL_MS);
         }
       } catch {
@@ -76,11 +86,19 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
 
   const handleRetryOcr = async () => {
     if (!liveDoc) return;
-    setIsRetrying(true);
+    setIsRetryingOcr(true);
     try {
       const { data } = await extractTextRequest(liveDoc.id);
       setLiveDoc(data);
       showToast("OCR completed successfully", "success");
+      // The retry endpoint schedules AI as a background task on success -
+      // resume polling so the AI Analysis panel picks up its progress.
+      if (data.ai_status === "processing") {
+        pollTimerRef.current = setTimeout(async () => {
+          const { data: refreshed } = await getDocumentRequest(liveDoc.id);
+          setLiveDoc(refreshed);
+        }, POLL_INTERVAL_MS);
+      }
     } catch (requestError) {
       const message = requestError.response?.data?.detail || "Unable to extract text.";
       showToast(message, "error");
@@ -88,7 +106,30 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
       // the backend has already recorded it in its in-memory tracker.
       setLiveDoc((current) => ({ ...current, ocr_status: "failed" }));
     } finally {
-      setIsRetrying(false);
+      setIsRetryingOcr(false);
+    }
+  };
+
+  const handleRetryAi = async () => {
+    if (!liveDoc) return;
+    setIsRetryingAi(true);
+    try {
+      const { data } = await extractMetadataRequest(liveDoc.id);
+      setLiveDoc(data);
+      showToast("AI analysis started", "success");
+      // Background task - resume polling until it resolves.
+      pollTimerRef.current = setTimeout(async function poll() {
+        const { data: refreshed } = await getDocumentRequest(liveDoc.id);
+        setLiveDoc(refreshed);
+        if (refreshed.ai_status === "processing") {
+          pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
+        }
+      }, POLL_INTERVAL_MS);
+    } catch (requestError) {
+      const message = requestError.response?.data?.detail || "Unable to run AI analysis.";
+      showToast(message, "error");
+    } finally {
+      setIsRetryingAi(false);
     }
   };
 
@@ -139,7 +180,18 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
             ocrText={liveDoc.ocr_text}
             originalFilename={doc.original_filename}
             onRetry={handleRetryOcr}
-            isRetrying={isRetrying}
+            isRetrying={isRetryingOcr}
+          />
+        )}
+
+        {/* AI Analysis only makes sense once there's OCR text to analyze -
+            matches the brief's trigger condition exactly. */}
+        {liveDoc && liveDoc.ocr_status === "completed" && (
+          <AIAnalysisPanel
+            aiStatus={liveDoc.ai_status}
+            document={liveDoc}
+            onRetry={handleRetryAi}
+            isRetrying={isRetryingAi}
           />
         )}
       </div>

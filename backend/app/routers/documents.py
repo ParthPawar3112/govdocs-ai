@@ -36,6 +36,8 @@ from app.schemas.document import (
     DocumentUpdate,
 )
 from app.services import file_storage, ocr_status
+from app.services import ai_status
+from app.services.ai_service import process_document_ai
 from app.services.ocr_service import extract_text, process_document_ocr
 
 logger = logging.getLogger("govdocs.documents")
@@ -173,6 +175,7 @@ def get_document(
 @router.post("/{document_id}/extract-text", response_model=DocumentResponse)
 def extract_document_text(
     document_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Document:
@@ -181,6 +184,11 @@ def extract_document_text(
     process documents that predate this phase. Synchronous by design: this
     is a single user-initiated action worth waiting a few seconds for a
     definitive answer, unlike the upload flow which must never block.
+
+    On success, schedules AI metadata extraction (Phase 6) as a real
+    BackgroundTask - same trigger condition as the automatic upload path
+    ("begins immediately after OCR completes successfully"), but genuinely
+    non-blocking here since this endpoint itself stays synchronous.
     """
     document = db.get(Document, document_id)
     if document is None:
@@ -192,6 +200,10 @@ def extract_document_text(
         db.commit()
         db.refresh(document)
         ocr_status.mark_done(document_id)
+
+        ai_status.mark_processing(document_id)
+        background_tasks.add_task(process_document_ai, document_id)
+
         return document
     except Exception:
         logger.exception(f"Manual OCR retry failed for document {document_id}")
@@ -200,6 +212,40 @@ def extract_document_text(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to extract text. Please try again.",
         )
+
+
+@router.post("/{document_id}/extract-metadata", response_model=DocumentResponse)
+def extract_document_metadata(
+    document_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Document:
+    """
+    Manual (re)run of AI metadata extraction - the Retry action for a failed
+    AI run, or for backfilling documents that predate this phase. Schedules
+    a background task (unlike OCR's manual retry, an LLM call can be slow
+    enough that it's worth keeping this endpoint itself fast) and returns
+    the document immediately showing ai_status="processing"; the frontend
+    polls GET /documents/{id} the same way it already does for OCR.
+    """
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if not document.ocr_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This document has no OCR text yet - extract text first.",
+        )
+
+    document.ai_error = None
+    db.commit()
+    db.refresh(document)
+
+    ai_status.mark_processing(document_id)
+    background_tasks.add_task(process_document_ai, document_id)
+
+    return document
 
 
 @router.put("/{document_id}", response_model=DocumentResponse)

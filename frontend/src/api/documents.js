@@ -22,6 +22,9 @@ export const getDocumentStatsRequest = () => client.get("/documents/stats");
 // button and to backfill OCR on documents uploaded before this phase existed.
 export const extractTextRequest = (id) => client.post(`/documents/${id}/extract-text`);
 
+// Phase 6 - manual (re)run of AI metadata extraction.
+export const extractMetadataRequest = (id) => client.post(`/documents/${id}/extract-metadata`);
+
 // Fetched as a blob (not navigated to directly) so the shared axios instance
 // can attach the Authorization header - a plain <a href> or <img src> can't
 // send bearer tokens, and these documents are access-controlled by design.

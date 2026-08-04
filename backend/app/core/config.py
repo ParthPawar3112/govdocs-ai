@@ -47,6 +47,17 @@ class Settings(BaseSettings):
     # r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     TESSERACT_CMD: str | None = None
 
+    # --- AI Metadata Extraction (Phase 6) ---
+    # Required for Phase 6. Get a key at https://aistudio.google.com/apikey
+    # Left empty by default so the app still runs without it - AI extraction
+    # simply reports a clear "not configured" error instead of crashing.
+    GEMINI_API_KEY: str = ""
+    # gemini-2.5-flash is GA/stable as of this writing. Gemini's model
+    # lineup moves fast - if this model is retired by the time you're
+    # running this, update this one value to whatever's current
+    # (see https://ai.google.dev/gemini-api/docs/models), no code changes needed.
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
