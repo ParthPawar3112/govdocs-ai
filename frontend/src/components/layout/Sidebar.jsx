@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
 import { NAV_SECTIONS } from "../../config/navigation";
+import Logo from "../ui/Logo";
 
 export default function Sidebar({
   activeSection,
@@ -39,14 +40,12 @@ export default function Sidebar({
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4">
           <div className={clsx("flex items-center gap-2.5 overflow-hidden", isCollapsed && "lg:hidden")}>
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/15 text-sm font-bold">
-              G
-            </div>
+            <Logo size="sm" chip />
             <span className="truncate text-sm font-bold tracking-tight">GovDocs AI</span>
           </div>
           {isCollapsed && (
-            <div className="hidden h-8 w-8 place-items-center rounded-lg bg-white/15 text-sm font-bold lg:grid">
-              G
+            <div className="hidden lg:block">
+              <Logo size="sm" chip />
             </div>
           )}
           <button

@@ -52,3 +52,31 @@ def ensure_ai_metadata_columns(engine: Engine) -> None:
             "ai_error": "TEXT",
         },
     )
+
+
+def ensure_search_indexes(engine: Engine) -> None:
+    """
+    Phase 7 - indexes for the new filter/sort dimensions this phase adds
+    (file type, AI category, AI-processed, confidence). "IF NOT EXISTS" made
+    this idempotent without needing the same missing-column bookkeeping as
+    _ensure_columns - SQLite already no-ops safely on a duplicate index name.
+
+    Deliberately NOT indexing ocr_text/ai_summary/ai_title/ai_department:
+    they're only ever matched with LIKE '%word%' (leading wildcard), which a
+    standard B-tree index can't accelerate anyway - an index there would
+    cost write performance for zero read benefit.
+    """
+    inspector = inspect(engine)
+    if "documents" not in inspector.get_table_names():
+        return  # fresh DB - nothing to retrofit
+
+    statements = [
+        "CREATE INDEX IF NOT EXISTS ix_documents_filetype ON documents (filetype)",
+        "CREATE INDEX IF NOT EXISTS ix_documents_ai_category ON documents (ai_category)",
+        "CREATE INDEX IF NOT EXISTS ix_documents_ai_processed ON documents (ai_processed)",
+        "CREATE INDEX IF NOT EXISTS ix_documents_ai_confidence ON documents (ai_confidence)",
+    ]
+    with engine.connect() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+        connection.commit()

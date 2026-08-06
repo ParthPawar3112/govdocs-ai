@@ -24,7 +24,7 @@ from fastapi import (
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.constants import ALLOWED_UPLOAD_TYPES, DEPARTMENTS
+from app.core.constants import ALLOWED_UPLOAD_TYPES, DEPARTMENTS, SORT_OPTIONS
 from app.db.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.document import Document
@@ -34,9 +34,11 @@ from app.schemas.document import (
     DocumentResponse,
     DocumentStatsResponse,
     DocumentUpdate,
+    FilterOptionsResponse,
 )
 from app.services import file_storage, ocr_status
 from app.services import ai_status
+from app.services import search_service
 from app.services.ai_service import process_document_ai
 from app.services.ocr_service import extract_text, process_document_ocr
 
@@ -91,6 +93,30 @@ async def upload_document(
     return document
 
 
+@router.get("/filter-options", response_model=FilterOptionsResponse)
+def get_filter_options(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FilterOptionsResponse:
+    """Distinct AI categories and uploader usernames currently in the
+    database, for the filter panel's dropdowns. Department/status/file-type
+    dropdowns don't need this - they're fixed enums the frontend already has
+    in config/departments.js."""
+    categories = [
+        row[0]
+        for row in db.query(Document.ai_category)
+        .filter(Document.ai_category.isnot(None), Document.ai_category != "")
+        .distinct()
+        .order_by(Document.ai_category.asc())
+        .all()
+    ]
+    uploaders = [
+        row[0]
+        for row in db.query(Document.uploaded_by).distinct().order_by(Document.uploaded_by.asc()).all()
+    ]
+    return FilterOptionsResponse(categories=categories, uploaded_by=uploaders)
+
+
 @router.get("/stats", response_model=DocumentStatsResponse)
 def get_document_stats(
     current_user: User = Depends(get_current_user),
@@ -109,36 +135,50 @@ def get_document_stats(
 
 @router.get("", response_model=DocumentListResponse)
 def list_documents(
-    q: str | None = Query(default=None, description="Search title, department, description"),
+    q: str | None = Query(
+        default=None,
+        description="Searches filename, OCR text, AI title/summary/category/department/keywords",
+    ),
+    category: str | None = Query(default=None, description="Filters on AI-assigned category"),
     department: str | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
+    file_type: str | None = Query(default=None),
+    uploaded_by: str | None = Query(default=None),
+    ai_processed: bool | None = Query(default=None),
+    ocr_processed: bool | None = Query(default=None),
     upload_date: date_type | None = Query(default=None, alias="date"),
-    limit: int | None = Query(default=None, ge=1, le=200),
+    date_from: date_type | None = Query(default=None),
+    date_to: date_type | None = Query(default=None),
+    sort: str | None = Query(default=None, description=f"One of: {', '.join(SORT_OPTIONS)}"),
+    page: int = Query(default=1, ge=1),
+    limit: int | None = Query(default=None, ge=1, le=200, description="Page size"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DocumentListResponse:
-    query = db.query(Document)
-
-    if q:
-        like = f"%{q}%"
-        query = query.filter(
-            Document.title.ilike(like)
-            | Document.department.ilike(like)
-            | Document.description.ilike(like)
+    if sort and sort not in SORT_OPTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"sort must be one of: {', '.join(SORT_OPTIONS)}",
         )
-    if department:
-        query = query.filter(Document.department == department)
-    if status_filter:
-        query = query.filter(Document.status == status_filter)
-    if upload_date:
-        query = query.filter(func.date(Document.upload_date) == str(upload_date))
 
-    query = query.order_by(Document.upload_date.desc())
-    total = query.count()
-    if limit:
-        query = query.limit(limit)
-
-    return DocumentListResponse(items=query.all(), total=total)
+    result = search_service.search_documents(
+        db,
+        q=q,
+        category=category,
+        department=department,
+        status=status_filter,
+        file_type=file_type,
+        uploaded_by=uploaded_by,
+        ai_processed=ai_processed,
+        ocr_processed=ocr_processed,
+        date=upload_date,
+        date_from=date_from,
+        date_to=date_to,
+        sort=sort,
+        page=page,
+        page_size=limit,
+    )
+    return DocumentListResponse(**result)
 
 
 @router.get("/download/{document_id}")

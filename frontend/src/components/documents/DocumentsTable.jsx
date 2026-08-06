@@ -3,6 +3,7 @@ import Card from "../ui/Card";
 import EmptyState from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
 import StatusBadge from "./StatusBadge";
+import HighlightedText from "./HighlightedText";
 import { formatDateTime } from "../../utils/format";
 
 const COLUMNS = ["Document", "Department", "Uploaded by", "Upload date", "Status", "Actions"];
@@ -36,6 +37,7 @@ export default function DocumentsTable({
   documents,
   isLoading,
   hasActiveFilters,
+  searchQuery,
   onView,
   onDownload,
   onEdit,
@@ -70,8 +72,8 @@ export default function DocumentsTable({
                   {hasActiveFilters ? (
                     <EmptyState
                       icon={Search}
-                      title="No matching documents"
-                      description="Try a different search term or clear your filters."
+                      title="No matching documents found"
+                      description="Try changing your search or filters."
                     />
                   ) : (
                     <EmptyState
@@ -95,9 +97,16 @@ export default function DocumentsTable({
                       <FileTypeIcon filetype={doc.filetype} />
                       <div className="min-w-0">
                         <p className="truncate font-medium text-ink dark:text-slate-100">
-                          {doc.title}
+                          <HighlightedText text={doc.title} query={searchQuery} />
                         </p>
-                        <p className="truncate text-xs text-ink-soft">{doc.original_filename}</p>
+                        <p className="truncate text-xs text-ink-soft">
+                          <HighlightedText text={doc.original_filename} query={searchQuery} />
+                        </p>
+                        {doc.ai_title && doc.ai_title !== doc.title && (
+                          <p className="truncate text-xs text-primary">
+                            AI: <HighlightedText text={doc.ai_title} query={searchQuery} />
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>

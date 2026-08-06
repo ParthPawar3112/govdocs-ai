@@ -21,3 +21,7 @@ ALLOWED_UPLOAD_TYPES = {
     "jpeg": "image/jpeg",
     "png": "image/png",
 }
+
+# Phase 7 - Smart Search sort options.
+SORT_OPTIONS = ("newest", "oldest", "name", "category", "department", "confidence")
+DEFAULT_PAGE_SIZE = 20

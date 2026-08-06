@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FileSearch, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import LoginForm from "../components/auth/LoginForm";
 import DocScanIllustration from "../components/illustrations/DocScanIllustration";
+import Logo from "../components/ui/Logo";
 import { useAuth } from "../hooks/useAuth";
 
 const FEATURES = [
@@ -45,9 +46,7 @@ export default function LoginPage() {
         />
 
         <div className="relative flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 backdrop-blur-sm">
-            <span className="text-sm font-bold">G</span>
-          </div>
+          <Logo size="sm" chip />
           <span className="text-lg font-bold tracking-tight">GovDocs AI</span>
         </div>
 
@@ -78,8 +77,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-fadeIn">
           <div className="rounded-2xl border border-line bg-white/90 p-8 shadow-glass backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 sm:p-10">
             <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary text-lg font-bold text-white shadow-sm">
-                G
+              <div className="mx-auto mb-4">
+                <Logo size="lg" className="mx-auto" />
               </div>
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                 GovDocs AI

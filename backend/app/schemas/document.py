@@ -60,10 +60,25 @@ class DocumentResponse(BaseModel):
 class DocumentListResponse(BaseModel):
     """Paginated-friendly wrapper so the frontend always knows the total count,
     even when `limit` trims the returned `items` (used by the dashboard's
-    "recent documents" panel)."""
+    "recent documents" panel).
+
+    `items` and `total` keep their exact Phase 4 meaning (total = count
+    matching the current filters) - existing callers (dashboard, search bar)
+    that only read those two fields are unaffected. Everything else here is
+    additive, for Phase 7's pagination controls and stats bar.
+    """
 
     items: list[DocumentResponse]
     total: int
+
+    # Phase 7 additions - all optional-safe for older callers to ignore.
+    overall_total: int = 0
+    ai_processed_count: int = 0
+    ocr_processed_count: int = 0
+    page: int = 1
+    page_size: int = 0
+    total_pages: int = 1
+    used_fuzzy_fallback: bool = False
 
 
 class DocumentUpdate(BaseModel):
@@ -84,3 +99,12 @@ class DocumentStatsResponse(BaseModel):
     pending: int
     approved: int
     rejected: int
+
+
+class FilterOptionsResponse(BaseModel):
+    """Distinct values for filter dropdowns that aren't a fixed enum -
+    categories and uploaded-by are both AI-generated/open-ended, so a
+    hardcoded list would drift out of sync with what's actually in the DB."""
+
+    categories: list[str]
+    uploaded_by: list[str]

@@ -1,4 +1,7 @@
-"""Document database model used by the Phase 4 Document Management module."""
+"""Document database model used by the Phase 4 Document Management module.
+Extended in Phase 5 (ocr_text), Phase 6 (AI metadata), and Phase 7 (indexes
+on the columns Smart Search filters/sorts by - see app/db/migrate.py for
+how those indexes get retrofitted onto a database created before Phase 7)."""
 
 from datetime import datetime
 
@@ -27,7 +30,8 @@ class Document(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     filepath: Mapped[str] = mapped_column(String(500), nullable=False)
     filesize: Mapped[int] = mapped_column(Integer, nullable=False)  # bytes
-    filetype: Mapped[str] = mapped_column(String(10), nullable=False)  # pdf/jpg/jpeg/png
+    # index=True added in Phase 7 for the File Type filter.
+    filetype: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # pdf/jpg/jpeg/png
 
     uploaded_by: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     upload_date: Mapped[datetime] = mapped_column(
@@ -46,8 +50,11 @@ class Document(Base):
     ai_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_department: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    ai_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # index=True added in Phase 7 for the Category filter.
+    ai_category: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     ai_keywords: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
-    ai_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ai_processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # index=True added in Phase 7 for the Confidence sort.
+    ai_confidence: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
+    # index=True added in Phase 7 for the AI Processed filter.
+    ai_processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     ai_error: Mapped[str | None] = mapped_column(Text, nullable=True)

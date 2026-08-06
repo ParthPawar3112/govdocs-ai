@@ -18,6 +18,9 @@ export const deleteDocumentRequest = (id) => client.delete(`/documents/${id}`);
 
 export const getDocumentStatsRequest = () => client.get("/documents/stats");
 
+// Phase 7 - distinct AI categories and uploader usernames, for filter dropdowns.
+export const getFilterOptionsRequest = () => client.get("/documents/filter-options");
+
 // Phase 5 - manual (re)run of OCR, used both by the initial-failure Retry
 // button and to backfill OCR on documents uploaded before this phase existed.
 export const extractTextRequest = (id) => client.post(`/documents/${id}/extract-text`);

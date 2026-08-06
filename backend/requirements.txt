@@ -39,3 +39,9 @@ Pillow==12.3.0
 # Official Google Gen AI SDK. Lightweight, pure-Python, no heavy transitive
 # deps (unlike EasyOCR's torch) - installs in seconds.
 google-genai==2.16.0
+
+# --- Smart Search (Phase 7) ---
+# Fuzzy-match fallback for typos/rewording - only invoked when the primary
+# SQL search finds zero results (see search_service.py). Compiled but ships
+# prebuilt wheels for all common platforms/Python versions - fast install.
+rapidfuzz==3.14.5
