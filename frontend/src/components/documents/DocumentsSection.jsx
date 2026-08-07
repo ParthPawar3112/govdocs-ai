@@ -65,8 +65,11 @@ export default function DocumentsSection() {
       });
   }, []);
 
-  const fetchDocuments = useCallback(async () => {
-    setIsLoading(true);
+  // Live Document Processing Status: `silent` lets the background poll below
+  // (and the auto-open-viewer-after-upload flow) refresh the table's status
+  // badges without flashing the loading skeleton on every tick.
+  const fetchDocuments = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const { data } = await listDocumentsRequest({
         q: debouncedQuery || undefined,
@@ -101,6 +104,21 @@ export default function DocumentsSection() {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  // Live Document Processing Status: while any document on the current page
+  // is still mid-pipeline (OCR or AI running), silently re-poll the same
+  // list endpoint every few seconds so status badges update on their own -
+  // reuses fetchDocuments/listDocumentsRequest rather than a second polling
+  // system. Stops automatically once nothing is in flight.
+  useEffect(() => {
+    const hasProcessingDocument = documents.some(
+      (doc) => doc.ocr_status === "processing" || doc.ai_status === "processing"
+    );
+    if (!hasProcessingDocument) return undefined;
+
+    const interval = setInterval(() => fetchDocuments(true), 3000);
+    return () => clearInterval(interval);
+  }, [documents, fetchDocuments]);
 
   // Reset to page 1 whenever search/filters/sort change - staying on page 3
   // of a now-different result set would be confusing.
@@ -153,6 +171,15 @@ export default function DocumentsSection() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Live Document Processing Status: drop the user straight into the
+  // Document Viewer right after upload, so they immediately see OCR/AI
+  // progress instead of wondering what happened - reuses the viewer's
+  // existing polling entirely, no new status logic here.
+  const handleUploaded = (newDocument) => {
+    fetchDocuments();
+    setViewerDoc(newDocument);
   };
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
@@ -227,7 +254,7 @@ export default function DocumentsSection() {
       <UploadModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        onUploaded={fetchDocuments}
+        onUploaded={handleUploaded}
       />
 
       <DocumentViewerModal

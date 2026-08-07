@@ -5,9 +5,10 @@
 // covers viewing a document moments after upload, while OCR and then AI
 // (which starts right after OCR finishes) are both still running.
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Download, FileJson, FileText as FileTextIcon, Loader2 } from "lucide-react";
+import { FileJson, FileText as FileTextIcon } from "lucide-react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import OriginalDocumentPanel from "./OriginalDocumentPanel";
 import ExtractedTextPanel from "./ExtractedTextPanel";
 import AIAnalysisPanel from "./AIAnalysisPanel";
 import DocumentTimeline from "./DocumentTimeline";
@@ -19,6 +20,7 @@ import {
   getDocumentRequest,
 } from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
+import { formatDateTime } from "../../utils/format";
 
 const POLL_INTERVAL_MS = 2500;
 
@@ -151,13 +153,29 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
     }
   };
 
-  const handleDownload = () => {
-    if (!blobUrl || !doc) return;
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = doc.original_filename;
-    link.click();
-    showToast(`Downloading "${doc.original_filename}"`, "success");
+  const handleDownload = async () => {
+    if (!doc) return;
+    try {
+      // Fast path: reuse the already-fetched preview blob. Fallback: the
+      // inline preview may have failed to load (e.g. a transient network
+      // error) while the file itself is still perfectly downloadable, so
+      // fetch it fresh through the same authenticated endpoint.
+      let url = blobUrl;
+      let isTemporaryUrl = false;
+      if (!url) {
+        const { data } = await fetchDocumentBlobRequest(doc.id);
+        url = URL.createObjectURL(data);
+        isTemporaryUrl = true;
+      }
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = doc.original_filename;
+      link.click();
+      if (isTemporaryUrl) URL.revokeObjectURL(url);
+      showToast(`Downloading "${doc.original_filename}"`, "success");
+    } catch {
+      showToast("Download failed. Please try again.", "error");
+    }
   };
 
   // Phase 8 - client-side blob from data already on liveDoc, matching the
@@ -200,58 +218,29 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
 
   if (!doc) return null;
 
-  const isImage = ["jpg", "jpeg", "png"].includes(doc.filetype);
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={doc.title} size="xl">
       <div className="space-y-4">
-        <div className="flex min-h-[50vh] items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800">
-          {isLoading && <Loader2 className="h-6 w-6 animate-spin text-ink-soft" />}
-          {error && (
-            <div className="flex flex-col items-center gap-2 text-danger">
-              <AlertCircle className="h-6 w-6" />
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-          {!isLoading && !error && blobUrl && isImage && (
-            <img src={blobUrl} alt={doc.title} className="max-h-[70vh] rounded-lg object-contain" />
-          )}
-          {!isLoading && !error && blobUrl && !isImage && (
-            <iframe src={blobUrl} title={doc.title} className="h-[70vh] w-full rounded-xl" />
-          )}
-        </div>
+        {/* 1. Original Document */}
+        <OriginalDocumentPanel document={doc} blobUrl={blobUrl} isLoading={isLoading} error={error} onDownload={handleDownload} />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-ink-soft">
-            {doc.original_filename} &middot; {(doc.filesize / 1024).toFixed(0)} KB
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" icon={FileJson} onClick={handleDownloadAiMetadata} disabled={!liveDoc?.ai_processed}>
-              AI metadata JSON
-            </Button>
-            <Button variant="secondary" size="sm" icon={FileTextIcon} onClick={handleDownloadSummaryPdf}>
-              Summary PDF
-            </Button>
-            <Button icon={Download} onClick={handleDownload} disabled={!blobUrl}>
-              Download
-            </Button>
-          </div>
-        </div>
-
+        {/* 2. Processing Timeline */}
         {liveDoc && <DocumentTimeline document={liveDoc} />}
 
+        {/* 3. Extracted Text */}
         {liveDoc && (
           <ExtractedTextPanel
             ocrStatus={liveDoc.ocr_status}
             ocrText={liveDoc.ocr_text}
+            ocrError={liveDoc.ocr_error}
             originalFilename={doc.original_filename}
             onRetry={handleRetryOcr}
             isRetrying={isRetryingOcr}
           />
         )}
 
-        {/* AI Analysis only makes sense once there's OCR text to analyze -
-            matches the brief's trigger condition exactly. */}
+        {/* 4. AI Analysis - only makes sense once there's OCR text to
+            analyze, matches the brief's trigger condition exactly. */}
         {liveDoc && liveDoc.ocr_status === "completed" && (
           <AIAnalysisPanel
             aiStatus={liveDoc.ai_status}
@@ -260,6 +249,37 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
             isRetrying={isRetryingAi}
           />
         )}
+
+        {/* 5. Document Metadata / Actions */}
+        <div className="rounded-xl border border-line p-4 dark:border-slate-800">
+          <h3 className="mb-3 text-sm font-semibold text-ink dark:text-slate-100">Document details</h3>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+            <p className="flex items-center justify-between gap-3 text-ink-soft">
+              <span>File</span>
+              <span className="truncate text-ink dark:text-slate-100">{doc.original_filename}</span>
+            </p>
+            <p className="flex items-center justify-between gap-3 text-ink-soft">
+              <span>Size</span>
+              <span className="text-ink dark:text-slate-100">{(doc.filesize / 1024).toFixed(0)} KB</span>
+            </p>
+            <p className="flex items-center justify-between gap-3 text-ink-soft">
+              <span>Department</span>
+              <span className="text-ink dark:text-slate-100">{doc.department}</span>
+            </p>
+            <p className="flex items-center justify-between gap-3 text-ink-soft">
+              <span>Uploaded</span>
+              <span className="text-ink dark:text-slate-100">{formatDateTime(new Date(doc.upload_date))}</span>
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4 dark:border-slate-800">
+            <Button variant="secondary" size="sm" icon={FileJson} onClick={handleDownloadAiMetadata} disabled={!liveDoc?.ai_processed}>
+              AI metadata JSON
+            </Button>
+            <Button variant="secondary" size="sm" icon={FileTextIcon} onClick={handleDownloadSummaryPdf}>
+              Summary PDF
+            </Button>
+          </div>
+        </div>
       </div>
     </Modal>
   );

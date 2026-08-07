@@ -12,7 +12,7 @@ function txtFilename(originalFilename) {
   return `${base}.txt`;
 }
 
-export default function ExtractedTextPanel({ ocrStatus, ocrText, originalFilename, onRetry, isRetrying }) {
+export default function ExtractedTextPanel({ ocrStatus, ocrText, ocrError, originalFilename, onRetry, isRetrying }) {
   const { showToast } = useToast();
 
   const handleCopy = async () => {
@@ -42,19 +42,19 @@ export default function ExtractedTextPanel({ ocrStatus, ocrText, originalFilenam
         {ocrStatus === "processing" && (
           <span className="flex items-center gap-1.5 text-xs font-medium text-primary">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Processing OCR...
+            Extracting text...
           </span>
         )}
         {ocrStatus === "completed" && (
           <span className="flex items-center gap-1.5 text-xs font-medium text-success">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            OCR completed successfully
+            Text extraction complete
           </span>
         )}
         {ocrStatus === "failed" && (
           <span className="flex items-center gap-1.5 text-xs font-medium text-danger">
             <AlertCircle className="h-3.5 w-3.5" />
-            Unable to extract text
+            Text extraction failed
           </span>
         )}
       </div>
@@ -63,18 +63,18 @@ export default function ExtractedTextPanel({ ocrStatus, ocrText, originalFilenam
         {ocrStatus === "processing" && (
           <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm text-ink-soft">Processing OCR...</p>
+            <p className="text-sm font-medium text-ink dark:text-slate-100">Extracting text...</p>
+            <p className="text-xs text-ink-soft">Reading document content</p>
           </div>
         )}
 
         {ocrStatus === "failed" && (
           <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
             <AlertCircle className="h-6 w-6 text-danger" />
-            <p className="text-sm text-ink-soft">
-              Unable to extract text from this document.
-            </p>
+            <p className="text-sm font-medium text-danger">Text extraction failed</p>
+            {ocrError && <p className="max-w-sm text-xs text-ink-soft">{ocrError}</p>}
             <Button variant="secondary" size="sm" onClick={onRetry} loading={isRetrying}>
-              Retry
+              Retry OCR
             </Button>
           </div>
         )}

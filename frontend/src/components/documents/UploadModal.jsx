@@ -2,14 +2,19 @@
 // validation (mirrors backend rules for instant feedback - the backend
 // re-validates regardless, since client checks are never trusted alone),
 // upload progress, and success/error reporting via toast.
-import { useRef, useState } from "react";
-import { FileText, Image as ImageIcon, UploadCloud, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, FileText, Image as ImageIcon, Loader2, UploadCloud, X } from "lucide-react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import ProgressBar from "../ui/ProgressBar";
 import { ALLOWED_UPLOAD_EXTENSIONS, DEPARTMENTS, MAX_UPLOAD_SIZE_MB } from "../../config/departments";
 import { uploadDocumentRequest } from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
+
+// Live Document Processing Status - how long the "uploaded, now processing"
+// confirmation stays up before the modal hands off to the Document Viewer
+// (which takes over with the real OCR/AI polling - see DocumentsSection).
+const SUCCESS_STAGE_MS = 1400;
 
 const MAX_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 
@@ -49,18 +54,24 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
   const [formError, setFormError] = useState("");
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStage, setUploadStage] = useState("form"); // "form" | "success"
+  const successTimeoutRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(successTimeoutRef.current), []);
 
   const reset = () => {
+    clearTimeout(successTimeoutRef.current);
     setFile(null);
     setForm(initialForm);
     setFileError("");
     setFormError("");
     setProgress(0);
     setIsUploading(false);
+    setUploadStage("form");
   };
 
   const handleClose = () => {
-    if (isUploading) return;
+    if (isUploading || uploadStage === "success") return;
     reset();
     onClose();
   };
@@ -113,9 +124,16 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
         }
       });
       showToast(`"${data.title}" uploaded successfully`, "success");
-      onUploaded(data);
-      reset();
-      onClose();
+      // Brief confirmation before handing off to the Document Viewer, which
+      // takes over with the real live OCR -> AI status (see DocumentsSection).
+      setIsUploading(false);
+      setUploadStage("success");
+      successTimeoutRef.current = setTimeout(() => {
+        onUploaded(data);
+        reset();
+        onClose();
+      }, SUCCESS_STAGE_MS);
+      return;
     } catch (error) {
       const message = error.response?.data?.detail || "Upload failed. Please try again.";
       setFormError(message);
@@ -126,6 +144,25 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
   };
 
   const Icon = fileIcon(file);
+
+  if (uploadStage === "success") {
+    return (
+      <Modal isOpen={isOpen} onClose={handleClose} title="Upload document" size="md">
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-green-50 text-success dark:bg-green-500/15">
+            <CheckCircle2 className="h-6 w-6" />
+          </span>
+          <p className="text-sm font-semibold text-ink dark:text-slate-100">
+            Document uploaded successfully
+          </p>
+          <p className="flex items-center gap-1.5 text-sm text-ink-soft">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Processing document...
+          </p>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Upload document" size="md">

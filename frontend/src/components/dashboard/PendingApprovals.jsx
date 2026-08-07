@@ -2,6 +2,7 @@ import { ClipboardCheck } from "lucide-react";
 import Card from "../ui/Card";
 import EmptyState from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
+import StatusBadge from "../documents/StatusBadge";
 
 export default function PendingApprovals({ documents, isLoading, onNavigate }) {
   return (
@@ -49,6 +50,7 @@ export default function PendingApprovals({ documents, isLoading, onNavigate }) {
                     {doc.department} &middot; {doc.uploaded_by}
                   </p>
                 </div>
+                <StatusBadge status={doc.lifecycle_status} />
               </button>
             </li>
           ))}

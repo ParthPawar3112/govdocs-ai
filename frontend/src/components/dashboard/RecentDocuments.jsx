@@ -62,7 +62,7 @@ export default function RecentDocuments({ documents, isLoading, onNavigate }) {
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-ink-soft">{doc.department}</td>
                   <td className="whitespace-nowrap px-5 py-3.5">
-                    <StatusBadge status={doc.status} />
+                    <StatusBadge status={doc.lifecycle_status} />
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-ink-soft">{doc.uploaded_by}</td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-ink-soft">

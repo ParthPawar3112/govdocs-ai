@@ -11,6 +11,7 @@
 import {
   AlertTriangle,
   Building2,
+  CheckCircle2,
   FileText,
   FolderOpen,
   Loader2,
@@ -72,7 +73,8 @@ export default function AIAnalysisPanel({ aiStatus, document: doc, onRetry, isRe
         {aiStatus === "processing" && (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-sm text-ink-soft">Analyzing document with AI...</p>
+            <p className="text-sm font-medium text-ink dark:text-slate-100">AI analysis in progress...</p>
+            <p className="text-xs text-ink-soft">Extracting metadata and understanding document</p>
           </div>
         )}
 
@@ -89,16 +91,20 @@ export default function AIAnalysisPanel({ aiStatus, document: doc, onRetry, isRe
         {aiStatus === "failed" && (
           <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
             <XCircle className="h-6 w-6 text-danger" />
-            <p className="text-sm font-medium text-danger">AI processing failed</p>
+            <p className="text-sm font-medium text-danger">AI analysis failed</p>
             {doc.ai_error && <p className="max-w-sm text-xs text-ink-soft">{doc.ai_error}</p>}
             <Button variant="secondary" size="sm" onClick={onRetry} loading={isRetrying}>
-              Retry
+              Retry AI
             </Button>
           </div>
         )}
 
         {aiStatus === "completed" && (
           <div className="space-y-4">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-success">
+              <CheckCircle2 className="h-4 w-4" />
+              Document processing complete
+            </p>
             <FieldRow icon={FileText} label="Title">
               {doc.ai_title}
             </FieldRow>
