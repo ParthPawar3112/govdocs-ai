@@ -45,3 +45,9 @@ google-genai==2.16.0
 # SQL search finds zero results (see search_service.py). Compiled but ships
 # prebuilt wheels for all common platforms/Python versions - fast install.
 rapidfuzz==3.14.5
+
+# --- Approval Workflow & Reporting (Phase 8) ---
+# Pure-Python PDF generation for the Summary Report export - no native
+# binary dependency, same Windows-friendliness reasoning as pymupdf/pytesseract
+# above. reportlab was considered but is heavier for what's a one-page report.
+fpdf2==2.8.2

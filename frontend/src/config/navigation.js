@@ -14,11 +14,12 @@ import {
 export const NAV_SECTIONS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, live: true },
   { key: "documents", label: "Documents", icon: FileText, live: true },
-  { key: "search", label: "Smart Search", icon: Search, phase: "Phase 6 - Smart Search" },
-  { key: "workflow", label: "Workflow", icon: GitBranch, phase: "Phase 7 - Approval Workflow" },
-  { key: "audit", label: "Audit Logs", icon: History, phase: "Phase 8 - Audit Logs" },
-  { key: "analytics", label: "Analytics", icon: BarChart3, phase: "Phase 9 - Analytics Dashboard" },
-  { key: "settings", label: "Settings", icon: Settings, phase: "Not yet on the roadmap" },
+  { key: "search", label: "Smart Search", icon: Search, live: true },
+  // Phase 8 - Admin-only: Officer uploads, Admin reviews (see require_admin on the backend).
+  { key: "workflow", label: "Review Queue", icon: GitBranch, live: true, adminOnly: true },
+  { key: "audit", label: "Audit Logs", icon: History, live: true, adminOnly: true },
+  { key: "analytics", label: "Analytics", icon: BarChart3, live: true, adminOnly: true },
+  { key: "settings", label: "Settings", icon: Settings, live: true, adminOnly: true },
   { key: "profile", label: "Profile", icon: UserCircle, live: true },
 ];
 

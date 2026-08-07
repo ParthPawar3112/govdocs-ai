@@ -1,7 +1,8 @@
 """Document database model used by the Phase 4 Document Management module.
-Extended in Phase 5 (ocr_text), Phase 6 (AI metadata), and Phase 7 (indexes
-on the columns Smart Search filters/sorts by - see app/db/migrate.py for
-how those indexes get retrofitted onto a database created before Phase 7)."""
+Extended in Phase 5 (ocr_text), Phase 6 (AI metadata), Phase 7 (indexes on
+the columns Smart Search filters/sorts by), and Phase 8 (review workflow
+fields + a persisted ocr_error) - see app/db/migrate.py for how these get
+retrofitted onto a database created before the phase that added them."""
 
 from datetime import datetime
 
@@ -43,6 +44,10 @@ class Document(Base):
     # Phase 5 - the ONE field that module adds. Nullable: empty until OCR
     # runs (automatically after upload, or via manual retry).
     ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Phase 8 - mirrors ai_error below. Previously OCR failure was tracked
+    # only in-memory (app/services/ocr_status.py) and lost on restart; this
+    # makes it durable for the document viewer and OCR-failure analytics.
+    ocr_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Phase 6 - exactly the 8 fields specified for AI Metadata Extraction.
     # All nullable/defaulted so existing rows (and OCR-only documents where
@@ -58,3 +63,10 @@ class Document(Base):
     # index=True added in Phase 7 for the AI Processed filter.
     ai_processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     ai_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Phase 8 - Document Approval Workflow. `status` (above) now also takes
+    # "Needs Correction" and "Archived" (see core/constants.py). These three
+    # fields are only ever set together, by the /review and /archive endpoints.
+    admin_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

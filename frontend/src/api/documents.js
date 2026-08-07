@@ -33,3 +33,7 @@ export const extractMetadataRequest = (id) => client.post(`/documents/${id}/extr
 // send bearer tokens, and these documents are access-controlled by design.
 export const fetchDocumentBlobRequest = (id) =>
   client.get(`/documents/download/${id}`, { responseType: "blob" });
+
+// Phase 8 - one-page PDF snapshot of a document's status/OCR/AI metadata.
+export const fetchSummaryPdfRequest = (id) =>
+  client.get(`/documents/${id}/export/summary-pdf`, { responseType: "blob" });

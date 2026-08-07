@@ -32,3 +32,14 @@ def get_current_user(
     if user is None:
         raise unauthorized
     return user
+
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Phase 8 - gate for endpoints only Admins may call (review, audit log,
+    analytics, settings). Officers still authenticate normally elsewhere."""
+    if current_user.role != "Admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires Admin privileges.",
+        )
+    return current_user

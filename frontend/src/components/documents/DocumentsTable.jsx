@@ -116,7 +116,7 @@ export default function DocumentsTable({
                     {formatDateTime(new Date(doc.upload_date))}
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5">
-                    <StatusBadge status={doc.status} />
+                    <StatusBadge status={doc.lifecycle_status} />
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5">
                     <div className="flex items-center gap-0.5">

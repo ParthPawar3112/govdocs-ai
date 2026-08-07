@@ -5,15 +5,17 @@
 // covers viewing a document moments after upload, while OCR and then AI
 // (which starts right after OCR finishes) are both still running.
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Download, Loader2 } from "lucide-react";
+import { AlertCircle, Download, FileJson, FileText as FileTextIcon, Loader2 } from "lucide-react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import ExtractedTextPanel from "./ExtractedTextPanel";
 import AIAnalysisPanel from "./AIAnalysisPanel";
+import DocumentTimeline from "./DocumentTimeline";
 import {
   extractMetadataRequest,
   extractTextRequest,
   fetchDocumentBlobRequest,
+  fetchSummaryPdfRequest,
   getDocumentRequest,
 } from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
@@ -30,6 +32,7 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
   const [isRetryingOcr, setIsRetryingOcr] = useState(false);
   const [isRetryingAi, setIsRetryingAi] = useState(false);
   const pollTimerRef = useRef(null);
+  const prevStatusRef = useRef({ ocr: null, ai: null });
 
   // File preview - unchanged from Phase 4, just the blob-fetch part.
   useEffect(() => {
@@ -60,6 +63,7 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
     if (!isOpen || !doc) return undefined;
 
     setLiveDoc(doc);
+    prevStatusRef.current = { ocr: doc.ocr_status, ai: doc.ai_status };
     let isCancelled = false;
 
     const fetchLatest = async () => {
@@ -67,6 +71,20 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
         const { data } = await getDocumentRequest(doc.id);
         if (isCancelled) return;
         setLiveDoc(data);
+
+        const prev = prevStatusRef.current;
+        if (prev.ocr === "processing" && data.ocr_status === "completed") {
+          showToast("OCR completed successfully", "success");
+        } else if (prev.ocr === "processing" && data.ocr_status === "failed") {
+          showToast("OCR failed to extract text", "error");
+        }
+        if (prev.ai === "processing" && data.ai_status === "completed") {
+          showToast("AI analysis completed", "success");
+        } else if (prev.ai === "processing" && data.ai_status === "failed") {
+          showToast("AI analysis failed", "error");
+        }
+        prevStatusRef.current = { ocr: data.ocr_status, ai: data.ai_status };
+
         if (data.ocr_status === "processing" || data.ai_status === "processing") {
           pollTimerRef.current = setTimeout(fetchLatest, POLL_INTERVAL_MS);
         }
@@ -142,6 +160,44 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
     showToast(`Downloading "${doc.original_filename}"`, "success");
   };
 
+  // Phase 8 - client-side blob from data already on liveDoc, matching the
+  // existing ExtractedTextPanel .txt download pattern - no backend round trip.
+  const handleDownloadAiMetadata = () => {
+    if (!liveDoc) return;
+    const metadata = {
+      title: liveDoc.ai_title,
+      summary: liveDoc.ai_summary,
+      department: liveDoc.ai_department,
+      category: liveDoc.ai_category,
+      keywords: liveDoc.ai_keywords,
+      confidence: liveDoc.ai_confidence,
+    };
+    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${liveDoc.title}-ai-metadata.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast("AI metadata JSON downloaded", "success");
+  };
+
+  const handleDownloadSummaryPdf = async () => {
+    if (!doc) return;
+    try {
+      const { data } = await fetchSummaryPdfRequest(doc.id);
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${doc.title}-summary.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast("Summary report downloaded", "success");
+    } catch {
+      showToast("Could not generate summary report.", "error");
+    }
+  };
+
   if (!doc) return null;
 
   const isImage = ["jpg", "jpeg", "png"].includes(doc.filetype);
@@ -165,14 +221,24 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
           )}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-ink-soft">
             {doc.original_filename} &middot; {(doc.filesize / 1024).toFixed(0)} KB
           </p>
-          <Button icon={Download} onClick={handleDownload} disabled={!blobUrl}>
-            Download
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" icon={FileJson} onClick={handleDownloadAiMetadata} disabled={!liveDoc?.ai_processed}>
+              AI metadata JSON
+            </Button>
+            <Button variant="secondary" size="sm" icon={FileTextIcon} onClick={handleDownloadSummaryPdf}>
+              Summary PDF
+            </Button>
+            <Button icon={Download} onClick={handleDownload} disabled={!blobUrl}>
+              Download
+            </Button>
+          </div>
         </div>
+
+        {liveDoc && <DocumentTimeline document={liveDoc} />}
 
         {liveDoc && (
           <ExtractedTextPanel

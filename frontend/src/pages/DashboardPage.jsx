@@ -7,6 +7,11 @@ import DashboardHome from "../components/dashboard/DashboardHome";
 import ProfileSection from "../components/dashboard/ProfileSection";
 import PlaceholderSection from "../components/dashboard/PlaceholderSection";
 import DocumentsSection from "../components/documents/DocumentsSection";
+import SmartSearchSection from "../components/search/SmartSearchSection";
+import ReviewQueueSection from "../components/review/ReviewQueueSection";
+import AnalyticsSection from "../components/analytics/AnalyticsSection";
+import AuditLogSection from "../components/audit/AuditLogSection";
+import SettingsSection from "../components/settings/SettingsSection";
 import ToastContainer from "../components/ui/Toast";
 import { ToastProvider } from "../context/ToastContext";
 import { getSection } from "../config/navigation";
@@ -34,6 +39,16 @@ export default function DashboardPage() {
         );
       case "documents":
         return <DocumentsSection />;
+      case "search":
+        return <SmartSearchSection />;
+      case "workflow":
+        return user.role === "Admin" ? <ReviewQueueSection /> : <PlaceholderSection section={getSection(activeSection)} />;
+      case "analytics":
+        return user.role === "Admin" ? <AnalyticsSection /> : <PlaceholderSection section={getSection(activeSection)} />;
+      case "audit":
+        return user.role === "Admin" ? <AuditLogSection /> : <PlaceholderSection section={getSection(activeSection)} />;
+      case "settings":
+        return user.role === "Admin" ? <SettingsSection /> : <PlaceholderSection section={getSection(activeSection)} />;
       case "profile":
         return <ProfileSection user={user} onLogout={logout} />;
       default:

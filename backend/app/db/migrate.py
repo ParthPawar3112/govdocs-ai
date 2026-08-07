@@ -54,6 +54,20 @@ def ensure_ai_metadata_columns(engine: Engine) -> None:
     )
 
 
+def ensure_review_columns(engine: Engine) -> None:
+    """Phase 8 - Document Approval Workflow + persisted OCR failure reason."""
+    _ensure_columns(
+        engine,
+        "documents",
+        {
+            "ocr_error": "TEXT",
+            "admin_remarks": "TEXT",
+            "reviewed_by": "VARCHAR(50)",
+            "reviewed_at": "DATETIME",
+        },
+    )
+
+
 def ensure_search_indexes(engine: Engine) -> None:
     """
     Phase 7 - indexes for the new filter/sort dimensions this phase adds

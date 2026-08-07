@@ -99,6 +99,8 @@ def apply_filters(
     date: date_type | None = None,
     date_from: date_type | None = None,
     date_to: date_type | None = None,
+    min_confidence: float | None = None,
+    max_confidence: float | None = None,
 ):
     """All equality/range filters - independent of text search, and cheap
     since they hit indexed columns (see app/db/migrate.py for the Phase 7
@@ -125,6 +127,10 @@ def apply_filters(
         query = query.filter(func.date(Document.upload_date) >= str(date_from))
     if date_to:
         query = query.filter(func.date(Document.upload_date) <= str(date_to))
+    if min_confidence is not None:
+        query = query.filter(Document.ai_confidence >= min_confidence)
+    if max_confidence is not None:
+        query = query.filter(Document.ai_confidence <= max_confidence)
     return query
 
 
@@ -162,6 +168,8 @@ def search_documents(
     date: date_type | None = None,
     date_from: date_type | None = None,
     date_to: date_type | None = None,
+    min_confidence: float | None = None,
+    max_confidence: float | None = None,
     sort: str | None = None,
     page: int = 1,
     page_size: int | None = None,
@@ -188,6 +196,8 @@ def search_documents(
         date=date,
         date_from=date_from,
         date_to=date_to,
+        min_confidence=min_confidence,
+        max_confidence=max_confidence,
     )
 
     used_fuzzy_fallback = False

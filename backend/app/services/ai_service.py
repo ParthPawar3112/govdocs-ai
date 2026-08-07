@@ -23,7 +23,7 @@ import time
 from app.core.config import settings
 from app.db.database import SessionLocal
 from app.models.document import Document
-from app.services import ai_status
+from app.services import ai_status, audit_service
 
 logger = logging.getLogger("govdocs.ai")
 
@@ -187,6 +187,8 @@ def process_document_ai(document_id: int) -> None:
             )
             return
 
+        audit_service.log_action(db, user=document.uploaded_by, action="AI Started", document_id=document_id)
+
         last_error: Exception | None = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
@@ -199,6 +201,10 @@ def process_document_ai(document_id: int) -> None:
                 logger.info(
                     f"AI metadata extraction completed for document {document_id} "
                     f"(attempt {attempt}/{MAX_ATTEMPTS}, confidence={metadata['ai_confidence']})"
+                )
+                audit_service.log_action(
+                    db, user=document.uploaded_by, action="AI Completed", document_id=document_id,
+                    details=f"confidence={metadata['ai_confidence']}",
                 )
                 return
             except AIConfigurationError as exc:
@@ -224,6 +230,10 @@ def process_document_ai(document_id: int) -> None:
         document.ai_error = str(last_error)[:1000]
         document.ai_processed = False
         db.commit()
+        audit_service.log_action(
+            db, user=document.uploaded_by, action="AI Failed", document_id=document_id,
+            details=str(last_error)[:500],
+        )
     finally:
         ai_status.clear_processing(document_id)
         db.close()

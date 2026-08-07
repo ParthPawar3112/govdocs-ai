@@ -12,7 +12,7 @@ export const DEPARTMENTS = [
   "General Administration",
 ];
 
-export const DOCUMENT_STATUSES = ["Pending", "Approved", "Rejected"];
+export const DOCUMENT_STATUSES = ["Pending", "Approved", "Rejected", "Needs Correction", "Archived"];
 
 export const ALLOWED_UPLOAD_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
 export const MAX_UPLOAD_SIZE_MB = 10;

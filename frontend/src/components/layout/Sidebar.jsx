@@ -13,11 +13,15 @@ export default function Sidebar({
   isMobileOpen,
   onCloseMobile,
   onLogout,
+  role,
 }) {
   const handleSelect = (key) => {
     onSectionChange(key);
     onCloseMobile();
   };
+
+  // Phase 8 - Review Queue/Audit/Analytics/Settings are Admin-only.
+  const visibleSections = NAV_SECTIONS.filter((section) => !section.adminOnly || role === "Admin");
 
   return (
     <>
@@ -58,7 +62,7 @@ export default function Sidebar({
         </div>
 
         <nav className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_SECTIONS.map(({ key, label, icon: Icon }) => {
+          {visibleSections.map(({ key, label, icon: Icon }) => {
             const isActive = activeSection === key;
             return (
               <button

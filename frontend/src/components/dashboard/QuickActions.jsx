@@ -1,15 +1,17 @@
 // Every action here genuinely navigates somewhere real (a section, even if
 // that section is currently an honest "coming in Phase X" placeholder) -
 // nothing is a dead click or a fabricated success message.
-import { BarChart3, FileUp, History, Search, Users } from "lucide-react";
+import { BarChart3, FileUp, GitBranch, History, Search, Settings as SettingsIcon } from "lucide-react";
 import Card from "../ui/Card";
 
 const ACTIONS = [
   { key: "documents", label: "Upload document", icon: FileUp },
   { key: "search", label: "Search documents", icon: Search },
-  { key: "analytics", label: "Generate report", icon: BarChart3 },
-  { key: "audit", label: "Audit logs", icon: History },
-  { key: "settings", label: "Manage users", icon: Users, adminOnly: true },
+  // Phase 8 - Review Queue/Analytics/Audit/Settings are Admin-only (see Sidebar).
+  { key: "workflow", label: "Review queue", icon: GitBranch, adminOnly: true },
+  { key: "analytics", label: "View analytics", icon: BarChart3, adminOnly: true },
+  { key: "audit", label: "Audit logs", icon: History, adminOnly: true },
+  { key: "settings", label: "Settings", icon: SettingsIcon, adminOnly: true },
 ];
 
 export default function QuickActions({ role, onNavigate }) {

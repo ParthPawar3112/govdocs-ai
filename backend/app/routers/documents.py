@@ -24,9 +24,9 @@ from fastapi import (
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.constants import ALLOWED_UPLOAD_TYPES, DEPARTMENTS, SORT_OPTIONS
+from app.core.constants import ALLOWED_UPLOAD_TYPES, DEPARTMENTS, REVIEW_ACTION_STATUS, SORT_OPTIONS
 from app.db.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_user, require_admin
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import (
@@ -35,8 +35,9 @@ from app.schemas.document import (
     DocumentStatsResponse,
     DocumentUpdate,
     FilterOptionsResponse,
+    ReviewRequest,
 )
-from app.services import file_storage, ocr_status
+from app.services import audit_service, export_service, file_storage, ocr_status
 from app.services import ai_status
 from app.services import search_service
 from app.services.ai_service import process_document_ai
@@ -45,6 +46,11 @@ from app.services.ocr_service import extract_text, process_document_ocr
 logger = logging.getLogger("govdocs.documents")
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+# Fields on DocumentUpdate that count as "AI metadata" for audit purposes -
+# used to tell a plain title/department edit apart from a Review-page
+# correction to the AI's output (see update_document below).
+AI_METADATA_FIELDS = {"ai_title", "ai_summary", "ai_department", "ai_category", "ai_keywords", "ai_confidence"}
 
 
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -65,7 +71,15 @@ async def upload_document(
 
     content = await file.read()
     extension = file_storage.validate_upload(file, len(content))
-    stored_filename, filepath = file_storage.save_file(content, extension)
+
+    try:
+        stored_filename, filepath = file_storage.save_file(content, extension)
+    except OSError:
+        logger.exception(f"Failed to save uploaded file for user {current_user.username}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not save the uploaded file. Please try again.",
+        )
 
     document = Document(
         title=title,
@@ -82,6 +96,10 @@ async def upload_document(
     db.add(document)
     db.commit()
     db.refresh(document)
+
+    audit_service.log_action(
+        db, user=current_user.username, action="Upload", document_id=document.id, details=title,
+    )
 
     # OCR runs after the response is sent (BackgroundTasks), so upload stays
     # fast regardless of file size. Marked "processing" synchronously, right
@@ -149,6 +167,8 @@ def list_documents(
     upload_date: date_type | None = Query(default=None, alias="date"),
     date_from: date_type | None = Query(default=None),
     date_to: date_type | None = Query(default=None),
+    min_confidence: float | None = Query(default=None, ge=0, le=100),
+    max_confidence: float | None = Query(default=None, ge=0, le=100),
     sort: str | None = Query(default=None, description=f"One of: {', '.join(SORT_OPTIONS)}"),
     page: int = Query(default=1, ge=1),
     limit: int | None = Query(default=None, ge=1, le=200, description="Page size"),
@@ -174,6 +194,8 @@ def list_documents(
         date=upload_date,
         date_from=date_from,
         date_to=date_to,
+        min_confidence=min_confidence,
+        max_confidence=max_confidence,
         sort=sort,
         page=page,
         page_size=limit,
@@ -192,6 +214,7 @@ def download_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     content = file_storage.read_file(document.filepath)
+    audit_service.log_action(db, user=current_user.username, action="Downloaded", document_id=document_id)
     media_type = ALLOWED_UPLOAD_TYPES.get(document.filetype, "application/octet-stream")
     return Response(
         content=content,
@@ -235,19 +258,30 @@ def extract_document_text(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     ocr_status.mark_processing(document_id)
+    audit_service.log_action(db, user=current_user.username, action="OCR Started", document_id=document_id)
     try:
         document.ocr_text = extract_text(document.filepath, document.filetype)
+        document.ocr_error = None
         db.commit()
         db.refresh(document)
         ocr_status.mark_done(document_id)
+        audit_service.log_action(
+            db, user=current_user.username, action="OCR Completed", document_id=document_id,
+        )
 
         ai_status.mark_processing(document_id)
         background_tasks.add_task(process_document_ai, document_id)
 
         return document
-    except Exception:
+    except Exception as exc:
         logger.exception(f"Manual OCR retry failed for document {document_id}")
         ocr_status.mark_failed(document_id)
+        document.ocr_error = str(exc)[:1000]
+        db.commit()
+        audit_service.log_action(
+            db, user=current_user.username, action="OCR Failed", document_id=document_id,
+            details=str(exc)[:500],
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to extract text. Please try again.",
@@ -299,12 +333,100 @@ def update_document(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    for field, value in updates.model_dump(exclude_unset=True).items():
+    changed_fields = updates.model_dump(exclude_unset=True)
+    for field, value in changed_fields.items():
         setattr(document, field, value)
 
     db.commit()
     db.refresh(document)
+
+    if AI_METADATA_FIELDS & changed_fields.keys():
+        audit_service.log_action(
+            db, user=current_user.username, action="Metadata Edited", document_id=document_id,
+            details=", ".join(sorted(AI_METADATA_FIELDS & changed_fields.keys())),
+        )
     return document
+
+
+@router.post("/{document_id}/review", response_model=DocumentResponse)
+def review_document(
+    document_id: int,
+    review: ReviewRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Document:
+    """
+    Document Approval Workflow (Phase 8) - Admin decision on a document
+    that's finished OCR+AI processing. Approve/Reject/Send Back all follow
+    the same shape: set status, record who/when/why, log it, done. Doesn't
+    require ai_status to be "completed" first - an admin may still need to
+    reject/send-back a document whose AI analysis failed.
+    """
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    new_status = REVIEW_ACTION_STATUS[review.action]
+    document.status = new_status
+    document.admin_remarks = review.remarks
+    document.reviewed_by = current_user.username
+    document.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(document)
+
+    audit_action = {"approve": "Approved", "reject": "Rejected", "send_back": "Sent Back for Corrections"}[
+        review.action
+    ]
+    audit_service.log_action(
+        db, user=current_user.username, action=audit_action, document_id=document_id, details=review.remarks,
+    )
+    return document
+
+
+@router.post("/{document_id}/archive", response_model=DocumentResponse)
+def archive_document(
+    document_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Document:
+    """Moves a reviewed document out of the active workflow. Only meaningful
+    once a decision has already been made - archiving a still-Pending
+    document would hide it from the review queue with no reviewer of record."""
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    if document.status not in ("Approved", "Rejected"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only Approved or Rejected documents can be archived.",
+        )
+
+    document.status = "Archived"
+    db.commit()
+    db.refresh(document)
+    audit_service.log_action(db, user=current_user.username, action="Archived", document_id=document_id)
+    return document
+
+
+@router.get("/{document_id}/export/summary-pdf")
+def export_summary_pdf(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Phase 8 - a one-page PDF snapshot of a document's title, status, OCR
+    excerpt, and AI metadata, for offline records/handoff."""
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    pdf_bytes = export_service.generate_summary_pdf(document)
+    audit_service.log_action(db, user=current_user.username, action="Downloaded", document_id=document_id, details="Summary PDF")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{document.title}-summary.pdf"'},
+    )
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -320,3 +442,4 @@ def delete_document(
     file_storage.delete_file(document.filepath)
     db.delete(document)
     db.commit()
+    audit_service.log_action(db, user=current_user.username, action="Deleted", document_id=document_id)

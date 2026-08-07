@@ -38,6 +38,7 @@ export default function DashboardLayout({
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
         onLogout={onLogout}
+        role={user.role}
       />
 
       <div className="flex min-h-screen flex-1 flex-col">

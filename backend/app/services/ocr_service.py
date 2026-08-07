@@ -19,7 +19,7 @@ from PIL import Image
 from app.core.config import settings
 from app.db.database import SessionLocal
 from app.models.document import Document
-from app.services import ocr_status
+from app.services import audit_service, ocr_status
 
 logger = logging.getLogger("govdocs.ocr")
 
@@ -121,14 +121,29 @@ def process_document_ocr(document_id: int) -> None:
         if document is None:
             return
 
+        audit_service.log_action(db, user=document.uploaded_by, action="OCR Started", document_id=document_id)
+
         text = extract_text(document.filepath, document.filetype)
         document.ocr_text = text
+        document.ocr_error = None
         db.commit()
         ocr_status.mark_done(document_id)
         logger.info(f"OCR completed for document {document_id} ({len(text)} chars)")
-    except Exception:
+        audit_service.log_action(
+            db, user=document.uploaded_by, action="OCR Completed", document_id=document_id,
+            details=f"{len(text)} characters extracted",
+        )
+    except Exception as exc:
         logger.exception(f"OCR failed for document {document_id}")
         ocr_status.mark_failed(document_id)
+        document = db.get(Document, document_id)
+        if document is not None:
+            document.ocr_error = str(exc)[:1000]
+            db.commit()
+            audit_service.log_action(
+                db, user=document.uploaded_by, action="OCR Failed", document_id=document_id,
+                details=str(exc)[:500],
+            )
         return
     finally:
         db.close()

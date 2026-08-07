@@ -8,6 +8,7 @@ from app.db.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import User
 from app.schemas.auth import LoginRequest, MessageResponse, TokenResponse, UserResponse
+from app.services import audit_service
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -22,6 +23,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResp
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    audit_service.log_action(db, user=user.username, action="Login")
     return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
