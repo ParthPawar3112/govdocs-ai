@@ -49,7 +49,7 @@ export default function SettingsSection() {
     try {
       const { data } = await updateSettingsRequest({ ai_confidence_threshold: Number(threshold) });
       setSettings(data);
-      showToast("Settings updated", "success");
+      showToast("Settings updated successfully", "success");
     } catch (error) {
       showToast(error.response?.data?.detail || "Could not save settings.", "error");
     } finally {

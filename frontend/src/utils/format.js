@@ -32,3 +32,10 @@ export function formatDateTime(date) {
     timeStyle: "short",
   });
 }
+
+// Single source of truth for "is this filetype an image" - was previously
+// duplicated identically in DocumentsTable, SearchResultCard, and
+// OriginalDocumentPanel.
+export function isImageFile(filetype) {
+  return ["jpg", "jpeg", "png"].includes(filetype);
+}

@@ -33,7 +33,7 @@ export default function EditDocumentModal({ isOpen, onClose, document: doc, onUp
     setError("");
     try {
       const { data } = await updateDocumentRequest(doc.id, form);
-      showToast(`"${data.title}" updated`, "success");
+      showToast(`"${data.title}" updated successfully`, "success");
       onUpdated(data);
       onClose();
     } catch (requestError) {

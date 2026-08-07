@@ -25,7 +25,7 @@ from app.db.migrate import (
 from app.models.app_setting import AppSetting  # noqa: F401 - registers table with Base.metadata
 from app.models.audit_log import AuditLog  # noqa: F401 - registers table with Base.metadata
 from app.models.document import Document  # noqa: F401 - registers table with Base.metadata
-from app.models.user import User
+from app.models.user import User  # noqa: F401 - registers table with Base.metadata
 from app.routers.analytics import router as analytics_router
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router

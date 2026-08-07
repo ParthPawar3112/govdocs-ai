@@ -8,7 +8,11 @@ function ProtectedApplication() {
   const { isLoading, user } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen grid place-items-center text-slate-500">Loading session...</div>;
+    return (
+      <div className="min-h-screen grid place-items-center text-slate-500">
+        Verifying your session, please wait...
+      </div>
+    );
   }
 
   return user ? <DashboardPage /> : <LoginPage />;

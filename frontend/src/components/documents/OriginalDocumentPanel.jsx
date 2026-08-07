@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { AlertCircle, Download, Loader2, Maximize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import Button from "../ui/Button";
+import { isImageFile } from "../../utils/format";
 
 const ZOOM_STEP = 25;
 const ZOOM_MIN = 50;
@@ -17,7 +18,7 @@ export default function OriginalDocumentPanel({ document: doc, blobUrl, isLoadin
   const [zoomMode, setZoomMode] = useState("fit"); // "fit" | "manual"
   const [zoomPercent, setZoomPercent] = useState(100);
 
-  const isImage = ["jpg", "jpeg", "png"].includes(doc.filetype);
+  const isImage = isImageFile(doc.filetype);
 
   const zoomIn = () => {
     setZoomMode("manual");

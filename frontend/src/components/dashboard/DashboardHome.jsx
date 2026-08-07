@@ -12,6 +12,7 @@ import PendingApprovals from "./PendingApprovals";
 import QuickActions from "./QuickActions";
 import Announcements from "./Announcements";
 import SystemStatus from "./SystemStatus";
+import AboutSection from "./AboutSection";
 import { getDocumentStatsRequest, listDocumentsRequest } from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
 
@@ -70,7 +71,7 @@ export default function DashboardHome({ user, sessionStartedAt, onNavigate }) {
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {isLoading
           ? statCards.map((stat) => <StatCardSkeleton key={stat.key} />)
-          : statCards.map((stat) => <StatCard key={stat.key} {...stat} />)}
+          : statCards.map(({ key, ...card }) => <StatCard key={key} {...card} />)}
       </section>
 
       <section className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -83,6 +84,7 @@ export default function DashboardHome({ user, sessionStartedAt, onNavigate }) {
           <ActivityTimeline username={user.username} sessionStartedAt={sessionStartedAt} />
           <Announcements />
           <SystemStatus />
+          <AboutSection />
         </div>
       </section>
     </div>

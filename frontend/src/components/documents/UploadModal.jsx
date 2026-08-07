@@ -157,7 +157,7 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
           </p>
           <p className="flex items-center gap-1.5 text-sm text-ink-soft">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Processing document...
+            OCR and AI analysis are starting automatically.
           </p>
         </div>
       </Modal>

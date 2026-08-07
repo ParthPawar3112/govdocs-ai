@@ -87,7 +87,7 @@ export default function AnalyticsSection() {
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
-          : statCards.map((stat) => <StatCard key={stat.key} {...stat} />)}
+          : statCards.map(({ key, ...card }) => <StatCard key={key} {...card} />)}
       </section>
 
       {!isLoading && summary && (

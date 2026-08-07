@@ -7,11 +7,10 @@ import Badge from "../ui/Badge";
 import StatusBadge from "../documents/StatusBadge";
 import HighlightedText from "../documents/HighlightedText";
 import { getSearchSnippet } from "../../utils/searchSnippet";
-import { formatDateTime } from "../../utils/format";
+import { formatDateTime, isImageFile } from "../../utils/format";
 
 function FileTypeIcon({ filetype }) {
-  const isImage = ["jpg", "jpeg", "png"].includes(filetype);
-  const Icon = isImage ? ImageIcon : FileText;
+  const Icon = isImageFile(filetype) ? ImageIcon : FileText;
   return (
     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary-50 dark:bg-primary/15">
       <Icon className="h-5 w-5 text-primary" />

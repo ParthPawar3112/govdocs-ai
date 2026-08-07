@@ -64,7 +64,7 @@ export default function ReviewModal({ isOpen, onClose, document: doc, onReviewed
         ai_confidence: form.ai_confidence === "" ? null : Number(form.ai_confidence),
       });
       setLiveDoc(data);
-      showToast("AI metadata updated", "success");
+      showToast("AI metadata updated successfully", "success");
     } catch (error) {
       showToast(error.response?.data?.detail || "Could not save metadata changes.", "error");
     } finally {

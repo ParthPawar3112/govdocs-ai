@@ -4,13 +4,12 @@ import EmptyState from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
 import StatusBadge from "./StatusBadge";
 import HighlightedText from "./HighlightedText";
-import { formatDateTime } from "../../utils/format";
+import { formatDateTime, isImageFile } from "../../utils/format";
 
 const COLUMNS = ["Document", "Department", "Uploaded by", "Upload date", "Status", "Actions"];
 
 function FileTypeIcon({ filetype }) {
-  const isImage = ["jpg", "jpeg", "png"].includes(filetype);
-  const Icon = isImage ? ImageIcon : FileText;
+  const Icon = isImageFile(filetype) ? ImageIcon : FileText;
   return (
     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-50 dark:bg-primary/15">
       <Icon className="h-4 w-4 text-primary" />

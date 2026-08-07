@@ -2,12 +2,12 @@ import Card from "../ui/Card";
 import EmptyState from "../ui/EmptyState";
 
 const DESCRIPTIONS = {
-  documents: "Upload, browse, and manage digitized government records once this module ships.",
-  search: "Natural-language search across every processed document will live here.",
-  workflow: "Officer review and Admin approval actions will move through this screen.",
-  audit: "Every state change on every document will be logged and searchable here.",
-  analytics: "Turnaround time, approval rates, and department load will be visualized here.",
-  settings: "Account and system preferences will live here if this module is added to the roadmap.",
+  documents: "Upload, browse, and manage digitized government records.",
+  search: "Full-text search across every processed document's OCR text and AI metadata.",
+  workflow: "Approve, reject, or send back documents in the Review Queue. This area is limited to Admin accounts.",
+  audit: "Every login, upload, and review action is logged and searchable in the Audit Log. This area is limited to Admin accounts.",
+  analytics: "Upload trends, approval rates, and department/category breakdowns are available in Analytics. This area is limited to Admin accounts.",
+  settings: "AI confidence threshold and system configuration are available in Settings. This area is limited to Admin accounts.",
 };
 
 export default function PlaceholderSection({ section }) {
@@ -22,7 +22,7 @@ export default function PlaceholderSection({ section }) {
       <Card padding="p-0">
         <EmptyState
           icon={section.icon}
-          title={`${section.label} isn't built yet`}
+          title={`${section.label} requires Admin access`}
           description={DESCRIPTIONS[section.key] || "This module is on the roadmap."}
           phase={section.phase}
         />

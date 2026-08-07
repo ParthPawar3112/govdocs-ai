@@ -29,7 +29,7 @@ export default function PendingApprovals({ documents, isLoading, onNavigate }) {
       {!isLoading && documents.length === 0 && (
         <EmptyState
           icon={ClipboardCheck}
-          title="Nothing waiting on you"
+          title="No pending approvals"
           description="Documents pending review will show up here."
         />
       )}
@@ -58,8 +58,7 @@ export default function PendingApprovals({ documents, isLoading, onNavigate }) {
       )}
 
       <p className="border-t border-line px-5 py-3 text-xs text-ink-soft dark:border-slate-800">
-        Full approve/reject actions arrive with Approval Workflow (Phase 7) - status can be
-        changed manually via Edit for now.
+        Full approve, reject, and send-back actions are available in the Review Queue.
       </p>
     </Card>
   );
