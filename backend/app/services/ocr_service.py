@@ -92,7 +92,15 @@ def extract_text(filepath: str, filetype: str) -> str:
     filetype = filetype.lower()
 
     if filetype in IMAGE_TYPES:
-        images = [Image.open(filepath)]
+        # Phase 9 - PIL opens lazily and keeps the file handle open until the
+        # Image is closed/garbage-collected. Load fully, detach a copy, then
+        # close the handle immediately rather than leaving it open for the
+        # rest of this call - on Windows a lingering handle can block a
+        # subsequent delete of the same file (e.g. the user deletes the
+        # document moments after upload, while OCR was still holding it open).
+        with Image.open(filepath) as source_image:
+            source_image.load()
+            images = [source_image.copy()]
     elif filetype in PDF_TYPES:
         images = _pdf_to_images(filepath)
     else:

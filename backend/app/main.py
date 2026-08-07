@@ -99,11 +99,13 @@ def health_check(db: Session = Depends(get_db)):
     3. A real query against SQLite succeeds.
     """
     db.execute(text("SELECT 1"))
+    # Phase 9 - this endpoint is intentionally unauthenticated (it's a basic
+    # liveness probe), so it must not leak connection details - "connected"
+    # is all a caller needs, unlike the raw database_url this used to return.
     return {
         "status": "ok",
         "service": settings.APP_NAME,
         "database": "connected",
-        "database_url": settings.DATABASE_URL,
     }
 
 

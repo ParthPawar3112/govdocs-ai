@@ -10,8 +10,12 @@ export default function Announcements() {
         </span>
         <div>
           <h3 className="text-sm font-semibold text-ink dark:text-slate-100">Announcements</h3>
+          <p className="mt-1 text-sm font-medium text-ink dark:text-slate-100">
+            Prototype development complete
+          </p>
           <p className="mt-1 text-sm text-ink-soft">
-            The Phase 3 interface redesign is live. Document Upload and OCR are up next.
+            GovDocs AI now includes AI-powered document processing, OCR, Smart Search, document
+            review workflows, audit logs, analytics, security hardening, and live processing status.
           </p>
         </div>
       </div>

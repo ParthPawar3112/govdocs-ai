@@ -14,7 +14,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
-from app.services import audit_service
+from app.services import audit_service, login_rate_limit
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -22,13 +22,21 @@ router = APIRouter(prefix="/api/auth", tags=["authentication"])
 @router.post("/login", response_model=TokenResponse)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Authenticate credentials and return a 30-minute bearer JWT."""
+    if login_rate_limit.is_locked_out(credentials.username):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Please try again in a few minutes.",
+        )
+
     user = db.query(User).filter(User.username == credentials.username).first()
     if user is None or not verify_password(credentials.password, user.password_hash):
+        login_rate_limit.record_failure(credentials.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    login_rate_limit.record_success(credentials.username)
     audit_service.log_action(db, user=user.username, action="Login")
     return TokenResponse(access_token=create_access_token(str(user.id)))
 

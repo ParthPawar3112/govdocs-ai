@@ -70,7 +70,7 @@ async def upload_document(
         )
 
     content = await file.read()
-    extension = file_storage.validate_upload(file, len(content))
+    extension = file_storage.validate_upload(file, content)
 
     try:
         stored_filename, filepath = file_storage.save_file(content, extension)
