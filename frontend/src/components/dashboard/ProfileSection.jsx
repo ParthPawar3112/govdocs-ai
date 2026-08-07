@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { Calendar, Hash, KeyRound, ShieldCheck } from "lucide-react";
 import Avatar from "../ui/Avatar";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import Card from "../ui/Card";
+import ChangePasswordModal from "../auth/ChangePasswordModal";
 import { formatDateTime } from "../../utils/format";
 
 export default function ProfileSection({ user, onLogout }) {
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
   const fields = [
     { icon: Hash, label: "User ID", value: `#${user.id}` },
     { icon: ShieldCheck, label: "Role", value: user.role },
@@ -45,7 +49,7 @@ export default function ProfileSection({ user, onLogout }) {
         </div>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-line pt-5 dark:border-slate-800 sm:flex-row">
-          <Button variant="secondary" icon={KeyRound} disabled title="Password changes aren't available yet">
+          <Button variant="secondary" icon={KeyRound} onClick={() => setIsChangePasswordOpen(true)}>
             Change password
           </Button>
           <Button variant="danger" onClick={onLogout} className="sm:ml-auto">
@@ -53,6 +57,12 @@ export default function ProfileSection({ user, onLogout }) {
           </Button>
         </div>
       </Card>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onLogout={onLogout}
+      />
     </div>
   );
 }

@@ -34,3 +34,15 @@ class MessageResponse(BaseModel):
     """A concise response shape for stateless actions such as logout."""
 
     message: str
+
+
+class ChangePasswordRequest(BaseModel):
+    """Validated payload for the Change Password endpoint. The 8-character
+    minimum is enforced here; the current-password check and the
+    new/confirm match check are business rules, done in the router so the
+    error messages can be specific (mirrors how document validation is
+    split between schema and router elsewhere in this codebase)."""
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=1, max_length=128)

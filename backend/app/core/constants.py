@@ -53,6 +53,7 @@ AUDIT_ACTIONS = (
     "Downloaded",
     "Deleted",
     "Settings Updated",
+    "Password Changed",
 )
 
 DEFAULT_AI_CONFIDENCE_THRESHOLD = 60.0
