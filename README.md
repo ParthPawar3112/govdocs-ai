@@ -187,9 +187,10 @@ npm run dev
 
 | Name | Role |
 |---|---|
-| — | — |
-| — | — |
-| — | — |
+| Parth Pawar | Full Backend + Frontend Development, system architecture, AI/OCR integration, and overall technical implementation |
+| Tanmay Shinde | Design in ppt & UI/UX inputs |
+| Sukhada Ugale | Speaker / Project Presenter |
+| Ishwari More | Speaker / Project Presenter. |
 
 ---
 

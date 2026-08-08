@@ -40,9 +40,9 @@ export default function LoginForm({ onSubmit, isSubmitting, error }) {
           Username
         </span>
         <div className="relative">
-          <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+          <User className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-soft" />
           <input
-            className="h-11 w-full rounded-lg border border-line bg-white pl-10 pr-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="h-[52px] w-full rounded-xl border border-line bg-slate-50/70 pl-12 pr-3 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:bg-slate-800"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             autoComplete="username"
@@ -57,9 +57,9 @@ export default function LoginForm({ onSubmit, isSubmitting, error }) {
           Password
         </span>
         <div className="relative">
-          <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+          <Lock className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-soft" />
           <input
-            className="h-11 w-full rounded-lg border border-line bg-white pl-10 pr-11 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            className="h-[52px] w-full rounded-xl border border-line bg-slate-50/70 pl-12 pr-12 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100 dark:focus:bg-slate-800"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -69,11 +69,11 @@ export default function LoginForm({ onSubmit, isSubmitting, error }) {
           />
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft transition hover:text-primary"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-soft transition hover:text-primary"
             onClick={() => setShowPassword((visible) => !visible)}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
           </button>
         </div>
       </label>
@@ -113,7 +113,12 @@ export default function LoginForm({ onSubmit, isSubmitting, error }) {
         </div>
       )}
 
-      <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
+      <Button
+        type="submit"
+        className="w-full !h-[54px] !rounded-xl !bg-gradient-to-r !from-primary !to-primary-dark !text-base !shadow-lg !shadow-primary/25 transition-transform hover:!-translate-y-0.5 hover:!shadow-xl"
+        size="lg"
+        loading={isSubmitting}
+      >
         {isSubmitting ? "Signing in..." : "Sign in"}
       </Button>
     </form>
