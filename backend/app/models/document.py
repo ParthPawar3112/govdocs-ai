@@ -63,6 +63,11 @@ class Document(Base):
     # index=True added in Phase 7 for the AI Processed filter.
     ai_processed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     ai_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # "english" | "marathi" - which language ai_title/ai_summary were written
+    # in for this document. Nullable so every row that predates this feature
+    # stays valid as-is (None is treated the same as "english" everywhere
+    # this is read) - no backfill/migration of existing rows.
+    ai_output_language: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Phase 8 - Document Approval Workflow. `status` (above) now also takes
     # "Needs Correction" and "Archived" (see core/constants.py). These three

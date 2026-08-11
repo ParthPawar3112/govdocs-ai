@@ -7,7 +7,13 @@ import { CheckCircle2, FileText, Image as ImageIcon, Loader2, UploadCloud, X } f
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
 import ProgressBar from "../ui/ProgressBar";
-import { ALLOWED_UPLOAD_EXTENSIONS, DEPARTMENTS, MAX_UPLOAD_SIZE_MB } from "../../config/departments";
+import {
+  AI_OUTPUT_LANGUAGES,
+  ALLOWED_UPLOAD_EXTENSIONS,
+  DEFAULT_AI_OUTPUT_LANGUAGE,
+  DEPARTMENTS,
+  MAX_UPLOAD_SIZE_MB,
+} from "../../config/departments";
 import { uploadDocumentRequest } from "../../api/documents";
 import { useToast } from "../../hooks/useToast";
 
@@ -41,7 +47,12 @@ function validateFile(file) {
   return null;
 }
 
-const initialForm = { title: "", department: DEPARTMENTS[0], description: "" };
+const initialForm = {
+  title: "",
+  department: DEPARTMENTS[0],
+  description: "",
+  outputLanguage: DEFAULT_AI_OUTPUT_LANGUAGE,
+};
 
 export default function UploadModal({ isOpen, onClose, onUploaded }) {
   const { showToast } = useToast();
@@ -114,6 +125,7 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     formData.append("title", form.title.trim());
     formData.append("department", form.department);
     formData.append("description", form.description.trim());
+    formData.append("output_language", form.outputLanguage);
     formData.append("file", file);
 
     setIsUploading(true);
@@ -266,6 +278,27 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-ink dark:text-slate-200">
+            AI summary language
+          </span>
+          <select
+            value={form.outputLanguage}
+            onChange={(event) => setForm((c) => ({ ...c, outputLanguage: event.target.value }))}
+            className="h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            {AI_OUTPUT_LANGUAGES.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-ink-soft">
+            Language for the AI-generated title &amp; summary only. Text extraction (OCR)
+            always reads both English and Marathi in the document regardless of this choice.
+          </p>
         </label>
 
         <label className="block">

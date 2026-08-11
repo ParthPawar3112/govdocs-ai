@@ -30,6 +30,14 @@ const STATUS_BADGE = {
   failed: { tone: "danger", label: "Failed" },
 };
 
+// Mirrors backend AI_OUTPUT_LANGUAGES - shown so it's obvious which language
+// the title/summary below were generated in (a document's OCR always reads
+// both scripts regardless; this badge is about the AI's output language only).
+const OUTPUT_LANGUAGE_LABEL = {
+  english: "English",
+  marathi: "Marathi",
+};
+
 function ConfidenceBar({ value }) {
   const tone = value >= 80 ? "bg-success" : value >= 60 ? "bg-primary" : "bg-danger";
   return (
@@ -66,7 +74,12 @@ export default function AIAnalysisPanel({ aiStatus, document: doc, onRetry, isRe
           <Sparkles className="h-4 w-4 text-primary" />
           AI analysis
         </h3>
-        <Badge tone={badge.tone}>{badge.label}</Badge>
+        <div className="flex items-center gap-2">
+          {aiStatus === "completed" && doc.ai_output_language && (
+            <Badge tone="info">{OUTPUT_LANGUAGE_LABEL[doc.ai_output_language] ?? doc.ai_output_language}</Badge>
+          )}
+          <Badge tone={badge.tone}>{badge.label}</Badge>
+        </div>
       </div>
 
       <div className="p-4">

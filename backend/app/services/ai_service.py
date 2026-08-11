@@ -54,11 +54,30 @@ Field guidance:
 - keywords: 3-8 relevant keywords or short phrases from the document
 - confidence: your confidence in this analysis, as an integer from 0 to 100
 
+Output language:
+- {language_instruction}
+- Always write "department", "category", and "keywords" in English regardless of the
+  instruction above, so they stay consistent for cross-document search and filtering.
+
 Rules:
 - No markdown
 - No explanations
 - JSON only
 """
+
+# Per-upload output-language toggle (see app/core/config.py AI_OUTPUT_LANGUAGE and
+# the output_language field on POST /documents/upload). Only "title" and "summary"
+# are affected - department/category/keywords are always instructed to stay English
+# (see PROMPT_TEMPLATE above), deliberately, so a Marathi-toggled document never
+# fragments search/filter results away from an English one for the same department.
+LANGUAGE_INSTRUCTIONS = {
+    "english": 'Write the "title" and "summary" fields in English.',
+    "marathi": (
+        'Write the "title" and "summary" fields in Marathi, using Devanagari script, '
+        "matching the source document's language."
+    ),
+}
+DEFAULT_OUTPUT_LANGUAGE = "english"
 
 REQUIRED_KEYS = ("title", "summary", "department", "category", "keywords", "confidence")
 
@@ -73,7 +92,7 @@ class AIConfigurationError(AIServiceError):
     worth retrying, unlike a transient network/parsing failure."""
 
 
-def _call_gemini(ocr_text: str) -> str:
+def _call_gemini(ocr_text: str, output_language: str = DEFAULT_OUTPUT_LANGUAGE) -> str:
     if not settings.GEMINI_API_KEY:
         raise AIConfigurationError(
             "GEMINI_API_KEY is not configured. Add it to your .env file - "
@@ -90,7 +109,12 @@ def _call_gemini(ocr_text: str) -> str:
         ) from exc
 
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    prompt = PROMPT_TEMPLATE.format(ocr_text=ocr_text[:12000])  # keep prompts bounded
+    language_instruction = LANGUAGE_INSTRUCTIONS.get(
+        output_language, LANGUAGE_INSTRUCTIONS[DEFAULT_OUTPUT_LANGUAGE]
+    )
+    prompt = PROMPT_TEMPLATE.format(
+        ocr_text=ocr_text[:12000], language_instruction=language_instruction
+    )  # keep prompts bounded
 
     try:
         response = client.models.generate_content(
@@ -157,11 +181,14 @@ def _parse_and_validate(raw_text: str) -> dict:
     }
 
 
-def extract_metadata(ocr_text: str) -> dict:
+def extract_metadata(ocr_text: str, output_language: str = DEFAULT_OUTPUT_LANGUAGE) -> dict:
     """Single attempt: call Gemini, parse, validate. Raises AIServiceError
     on any failure - retry policy lives in process_document_ai, not here,
-    so this function stays simple and independently testable/mockable."""
-    raw_text = _call_gemini(ocr_text)
+    so this function stays simple and independently testable/mockable.
+
+    output_language is optional and defaults to English, matching every
+    caller and test written before the language toggle existed."""
+    raw_text = _call_gemini(ocr_text, output_language)
     return _parse_and_validate(raw_text)
 
 
@@ -189,10 +216,18 @@ def process_document_ai(document_id: int) -> None:
 
         audit_service.log_action(db, user=document.uploaded_by, action="AI Started", document_id=document_id)
 
+        # Read the per-document choice made at upload time rather than taking
+        # a new parameter here - process_document_ai is called from both the
+        # OCR success chain and the manual retry endpoint with just an id,
+        # and keeping that signature unchanged means neither caller had to
+        # change. None (rows predating this feature) resolves to the
+        # configured default, same as if output_language had been omitted.
+        output_language = document.ai_output_language or settings.AI_OUTPUT_LANGUAGE
+
         last_error: Exception | None = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                metadata = extract_metadata(document.ocr_text)
+                metadata = extract_metadata(document.ocr_text, output_language)
                 for field, value in metadata.items():
                     setattr(document, field, value)
                 document.ai_processed = True

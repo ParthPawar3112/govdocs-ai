@@ -67,6 +67,9 @@ class DocumentResponse(BaseModel):
     ai_processed: bool
     ai_error: str | None
     ocr_error: str | None
+    # Which language ai_title/ai_summary were written in - None for rows that
+    # predate this feature, treated identically to "english" everywhere.
+    ai_output_language: str | None
 
     # Phase 8 - Document Approval Workflow.
     admin_remarks: str | None

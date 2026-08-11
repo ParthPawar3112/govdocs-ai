@@ -24,7 +24,14 @@ from fastapi import (
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.constants import ALLOWED_UPLOAD_TYPES, DEPARTMENTS, REVIEW_ACTION_STATUS, SORT_OPTIONS
+from app.core.config import settings
+from app.core.constants import (
+    AI_OUTPUT_LANGUAGES,
+    ALLOWED_UPLOAD_TYPES,
+    DEPARTMENTS,
+    REVIEW_ACTION_STATUS,
+    SORT_OPTIONS,
+)
 from app.db.database import get_db
 from app.dependencies.auth import get_current_user, require_admin
 from app.models.document import Document
@@ -59,6 +66,12 @@ async def upload_document(
     title: str = Form(..., min_length=1, max_length=255),
     department: str = Form(...),
     description: str | None = Form(None),
+    # Optional - which language the AI-generated title/summary come back in
+    # ("english" | "marathi"). Omitted (None) behaves exactly as before this
+    # feature existed: resolves to settings.AI_OUTPUT_LANGUAGE, which
+    # defaults to "english". Separate from OCR, which always reads eng+mar
+    # regardless of this value - see app/core/config.py OCR_LANGUAGE.
+    output_language: str | None = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -67,6 +80,13 @@ async def upload_document(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Department must be one of: {', '.join(DEPARTMENTS)}",
+        )
+
+    resolved_output_language = (output_language or settings.AI_OUTPUT_LANGUAGE).strip().lower()
+    if resolved_output_language not in AI_OUTPUT_LANGUAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"output_language must be one of: {', '.join(AI_OUTPUT_LANGUAGES)}",
         )
 
     content = await file.read()
@@ -92,6 +112,7 @@ async def upload_document(
         filetype=extension,
         uploaded_by=current_user.username,
         status="Pending",
+        ai_output_language=resolved_output_language,
     )
     db.add(document)
     db.commit()

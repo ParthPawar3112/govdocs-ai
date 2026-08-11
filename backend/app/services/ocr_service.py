@@ -13,6 +13,7 @@ router, not here - this module only knows how to turn a file into text.
 """
 import io
 import logging
+import os
 
 from PIL import Image
 
@@ -50,8 +51,15 @@ def _run_tesseract(images: list[Image.Image]) -> str:
 
     if settings.TESSERACT_CMD:
         pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
+    if settings.TESSDATA_PREFIX:
+        # Set on this process's own environment (not just read from it) so
+        # the tesseract.exe subprocess pytesseract shells out to inherits it
+        # correctly, regardless of the environment uvicorn itself started in.
+        os.environ["TESSDATA_PREFIX"] = settings.TESSDATA_PREFIX
 
-    pages = [pytesseract.image_to_string(image) for image in images]
+    pages = [
+        pytesseract.image_to_string(image, lang=settings.OCR_LANGUAGE) for image in images
+    ]
     return "\n\n".join(page.strip() for page in pages if page.strip())
 
 

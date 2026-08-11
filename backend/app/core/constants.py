@@ -57,3 +57,9 @@ AUDIT_ACTIONS = (
 )
 
 DEFAULT_AI_CONFIDENCE_THRESHOLD = 60.0
+
+# AI output-language toggle - which language ai_title/ai_summary are written
+# in (see app/services/ai_service.py LANGUAGE_INSTRUCTIONS). Deliberately
+# separate from OCR_LANGUAGE in config.py, which controls what Tesseract
+# recognizes in the source image, not what Gemini writes in its output.
+AI_OUTPUT_LANGUAGES = ("english", "marathi")

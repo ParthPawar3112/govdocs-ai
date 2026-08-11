@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.db.database import Base, engine, get_db
 from app.db.migrate import (
     ensure_ai_metadata_columns,
+    ensure_ai_output_language_column,
     ensure_ocr_text_column,
     ensure_review_columns,
     ensure_search_indexes,
@@ -80,6 +81,7 @@ def verify_database_on_startup() -> None:
     Base.metadata.create_all(bind=engine)
     ensure_ocr_text_column(engine)
     ensure_ai_metadata_columns(engine)
+    ensure_ai_output_language_column(engine)
     ensure_search_indexes(engine)
     ensure_review_columns(engine)
     seed_default_users()

@@ -119,7 +119,7 @@ class AIServiceTests(unittest.TestCase):
     def test_retries_then_succeeds(self):
         call_count = {"n": 0}
 
-        def flaky_call(_ocr_text):
+        def flaky_call(_ocr_text, _output_language=None):
             call_count["n"] += 1
             if call_count["n"] < 3:
                 raise ConnectionError("simulated transient network failure")

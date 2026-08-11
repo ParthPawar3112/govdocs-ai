@@ -68,6 +68,14 @@ def ensure_review_columns(engine: Engine) -> None:
     )
 
 
+def ensure_ai_output_language_column(engine: Engine) -> None:
+    """AI output-language toggle - per-upload choice of which language
+    ai_title/ai_summary are written in. Nullable, no default at the SQL
+    level: existing rows get NULL, which every reader treats identically to
+    "english" (see Document.ai_output_language)."""
+    _ensure_columns(engine, "documents", {"ai_output_language": "VARCHAR(20)"})
+
+
 def ensure_search_indexes(engine: Engine) -> None:
     """
     Phase 7 - indexes for the new filter/sort dimensions this phase adds
