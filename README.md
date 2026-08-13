@@ -2,144 +2,176 @@
 
 **Smart Digital Documentation System for Government Offices**
 
-GovDocs AI turns scanned paper records into searchable, structured, auditable digital documents — combining OCR text extraction, Gemini-powered AI metadata generation, and a full review/approval workflow in one government-office-ready system.
+GovDocs AI is a smart document management system designed to help government offices move from paper-based records to a searchable and organized digital system.
+
+It takes scanned documents, extracts their text using OCR, uses Gemini AI to generate useful metadata, and then sends the document through a review and approval workflow. The goal is simple: **make government documents easier to find, manage, review, and track.**
 
 ---
 
 ## Problem Statement
 
-Government offices handle enormous volumes of paper-based records — land records, certificates, correspondence, applications — that are filed manually, stored physically, and located only by manual search. This creates real, recurring costs:
+Government offices deal with a huge number of paper documents such as land records, certificates, applications, and official correspondence. Managing these records manually can make even simple tasks time-consuming.
 
-- **Slow retrieval** — finding a single record among thousands of physical files can take hours.
-- **No searchability** — paper archives can't be searched by content, only browsed by folder/date.
-- **No audit trail** — there's no reliable record of who accessed, modified, or approved a document.
-- **Inconsistent review** — approvals happen informally, with no enforced workflow or accountability.
-- **Risk of loss/damage** — physical-only records are vulnerable to fire, water damage, and misfiling.
+Some of the main problems are:
 
-## Solution Overview
+* **Slow retrieval** — finding an old document can take a lot of time.
+* **No proper search** — paper documents cannot be searched by their actual content.
+* **Limited tracking** — it can be difficult to know who accessed or modified a document.
+* **Manual approvals** — document review and approval often happen without a proper digital workflow.
+* **Risk of damage or loss** — physical records can be affected by water, fire, misfiling, or general wear.
 
-GovDocs AI digitizes the entire document lifecycle. An officer uploads a scanned document (image or PDF); the system automatically extracts its text via OCR, generates structured metadata (title, department, category, keywords, summary, confidence score) via Google's Gemini AI, and makes it instantly searchable. An admin then reviews the AI-assisted output and approves, rejects, or sends it back for correction — with every action logged to an audit trail. The result is a searchable, accountable, digital-first records system that fits directly into an existing government office workflow, requiring no change to how staff already think about document review.
+---
+
+## Our Solution
+
+GovDocs AI brings the complete document process into one system.
+
+An officer can upload a scanned image or PDF. The system first extracts the text using OCR. Gemini AI then analyzes the extracted content and creates useful information such as the document title, department, category, keywords, summary, and confidence score.
+
+The document can then be reviewed by an admin, who can approve it, reject it, or send it back for correction. Important actions are also recorded in an audit log.
+
+In short, the system turns:
+
+**Paper Document → Digital Text → AI Metadata → Review → Approval → Searchable Record**
 
 ---
 
 ## Key Features
 
-- **OCR-based digitization** — Tesseract-powered text extraction from scanned JPG/PNG images and multi-page PDFs
-- **AI metadata extraction** — Gemini AI generates title, summary, department, category, keywords, and a confidence score for every document
-- **Smart Search** — full-text search across titles, filenames, OCR text, AI summaries, and keywords, with a typo-tolerant fuzzy-match fallback
-- **Document lifecycle workflow** — every document moves through a clear, visible pipeline: Uploaded → OCR Processing → AI Processing → Pending Review → Approved/Rejected/Archived
-- **Review and approval system** — admins approve, reject, or send documents back for correction, with editable AI metadata and reviewer remarks
-- **Analytics dashboard** — upload trends, approval ratios, OCR/AI success rates, and department/category breakdowns
-- **Audit logging** — every significant action (login, upload, OCR, AI processing, review decisions, downloads, password changes) is recorded with user, timestamp, and detail
-- **Secure document management** — JWT-authenticated, role-scoped access with server-validated file uploads and no direct filesystem exposure
+* **OCR-based digitization** — extracts text from scanned JPG, PNG, and multi-page PDF documents using Tesseract OCR.
+* **AI metadata extraction** — Gemini AI generates the title, summary, department, category, keywords, and confidence score.
+* **Smart Search** — search through filenames, titles, OCR text, summaries, and keywords, with fuzzy matching for small spelling mistakes.
+* **Document workflow** — documents move through stages such as Uploaded → OCR Processing → AI Processing → Pending Review → Approved/Rejected/Archived.
+* **Review and approval** — admins can edit AI-generated information, add remarks, and approve, reject, or send documents back.
+* **Analytics dashboard** — shows useful information such as upload trends, approval ratios, processing success rates, and department/category statistics.
+* **Audit logging** — important actions such as login, upload, processing, review, downloads, and password changes are recorded.
+* **Secure document management** — JWT authentication, role-based access, password hashing, and server-side file validation are implemented.
 
-**Also included:** live processing status with automatic UI updates (no manual refresh), an in-viewer original document preview with zoom controls, AI-metadata (JSON) and one-page PDF summary exports, self-service password change, and full light/dark mode support.
+### Some additional features
+
+The system also includes live processing status updates, document preview with zoom controls, AI metadata JSON export, one-page PDF summary export, password change functionality, and light/dark mode.
 
 ---
 
 ## Technology Stack
 
-**Frontend**
-- React 18
-- Vite
-- Tailwind CSS
+### Frontend
 
-**Backend**
-- FastAPI (Python)
-- SQLite
-- SQLAlchemy (ORM)
+* React 18
+* Vite
+* Tailwind CSS
 
-**AI**
-- Google Gemini API (metadata extraction)
-- Tesseract OCR (text extraction, via `pytesseract` + PyMuPDF for PDF rendering)
+### Backend
+
+* FastAPI
+* Python
+* SQLite
+* SQLAlchemy
+
+### AI & OCR
+
+* Google Gemini API
+* Tesseract OCR
+* PyMuPDF
+* pytesseract
 
 ---
 
 ## System Architecture
 
-```
+```text
 ┌───────────────────────────────────────────────┐
-│            React + Vite Frontend               │
-│   (Tailwind CSS · Axios · JWT session state)    │
-└──────────────────────┬──────────────────────────┘
-                        │  REST API (JSON, Bearer JWT)
-┌──────────────────────▼──────────────────────────┐
-│                 FastAPI Backend                 │
-│   Routers  →  Services  →  SQLAlchemy Models    │
-│   (auth · documents · analytics · audit ·       │
-│    settings)                                    │
-└───┬──────────────┬──────────────┬────────────────┘
-    │              │              │
-┌───▼────┐   ┌─────▼──────┐  ┌────▼─────────┐
-│ SQLite │   │ Tesseract  │  │  Gemini API   │
-│   DB   │   │ OCR Engine │  │ (AI metadata) │
-└────────┘   └────────────┘  └───────────────┘
+│             React + Vite Frontend             │
+│       Tailwind CSS · Axios · JWT State        │
+└──────────────────────┬────────────────────────┘
+                       │ REST API
+                       │ Bearer JWT
+┌──────────────────────▼────────────────────────┐
+│                FastAPI Backend                 │
+│   Routers → Services → SQLAlchemy Models      │
+│                                               │
+│  Auth · Documents · Analytics · Audit         │
+│  Settings · OCR · AI · Search · File Storage │
+└──────┬───────────────┬───────────────┬─────────┘
+       │               │               │
+┌──────▼─────┐   ┌─────▼──────┐  ┌────▼─────────┐
+│   SQLite   │   │  Tesseract │  │  Gemini API  │
+│  Database  │   │     OCR    │  │ AI Metadata  │
+└────────────┘   └────────────┘  └──────────────┘
 ```
 
-The backend follows a thin-router / fat-service pattern: routers handle HTTP concerns only, business logic lives in dedicated service modules (OCR, AI, search, audit, file storage), and every document processing stage exposes its live status through a single, polled `GET /documents/{id}` endpoint the frontend already reuses everywhere a document is shown.
+The backend is structured so that the routers mainly handle API requests, while the actual processing logic is kept inside separate service modules. This makes the system easier to maintain and extend.
 
 ---
 
 ## AI Processing Workflow
 
-```
+```text
 Upload Document
       ↓
-OCR Extraction        (Tesseract — text pulled from the scanned image/PDF)
+OCR Extraction
       ↓
-AI Metadata Generation (Gemini — title, summary, department, category, keywords, confidence)
+Gemini AI Metadata Generation
       ↓
-Validation             (structured JSON response validated and clamped before saving)
+Validation
       ↓
-Storage                (extracted text + AI metadata persisted alongside the original file)
+Database & File Storage
       ↓
-Search & Workflow      (instantly searchable; enters the review queue for approval)
+Search + Review Workflow
+      ↓
+Approval / Rejection / Archive
 ```
 
-Every stage updates the document's status in real time — the frontend polls a single status endpoint and the UI transitions automatically from *OCR Processing* → *OCR Complete* → *AI Processing* → *AI Complete* → *Pending Review*, with no manual refresh. If OCR or AI extraction fails, the specific error is shown with a one-click retry.
+The frontend also shows the current processing stage automatically, so the user can see when OCR is running, when AI processing starts, and when the document is ready for review.
+
+If OCR or AI processing fails, the error is shown and the process can be retried.
 
 ---
 
-## Security Implementation
+## Security
 
-- **JWT authentication** — short-lived bearer tokens signed with a configurable secret; expired/invalid/tampered tokens are rejected
-- **Role-based access control** — Admin vs. Officer roles enforced consistently on every admin-only endpoint (review, audit logs, analytics, settings)
-- **Password hashing** — bcrypt via Passlib; passwords are never logged or returned in any API response
-- **File validation** — uploads are checked against an extension allow-list, a maximum size limit, and a magic-byte content signature check (so a mislabeled/renamed file is rejected, not just trusted by its extension)
-- **Login rate limiting** — repeated failed login attempts on an account trigger a temporary lockout
-- **Audit logs** — login, upload, OCR/AI processing, review decisions, downloads, and password changes are all recorded with user, timestamp, and action detail
-- **Secure environment variables** — secrets (JWT key, Gemini API key) live only in a git-ignored `.env` file; `.env.example` ships placeholders only, and no API response ever returns a secret or raw filesystem path
+Security was also considered while building the system.
+
+* JWT-based authentication
+* Admin and Officer role-based access
+* Password hashing using bcrypt
+* File extension, size, and content-signature validation
+* Login rate limiting
+* Audit logs for important actions
+* Secrets stored in `.env`
+* No direct filesystem access exposed to the frontend
+* API responses do not expose passwords, API keys, or raw server paths
 
 ---
 
-## Installation Guide
+## Installation
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) installed and on your PATH (Windows installer link above)
-- A free [Gemini API key](https://aistudio.google.com/apikey)
 
-### Backend setup
+* Python 3.11+
+* Node.js 18+
+* Tesseract OCR
+* Gemini API key
+
+### Backend
 
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # macOS/Linux
+.venv\Scripts\activate
 
 pip install -r requirements.txt
 
-copy .env.example .env          # Windows
-# cp .env.example .env          # macOS/Linux
-# then edit .env and set GEMINI_API_KEY
+copy .env.example .env
+```
 
+Add your Gemini API key to `.env`, then start the backend:
+
+```bash
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-The SQLite database and default accounts are created automatically on first run.
-
-### Frontend setup
+### Frontend
 
 ```bash
 cd frontend
@@ -147,51 +179,55 @@ npm install
 npm run dev
 ```
 
-### Access the app
+### Access the application
 
-| | |
-|---|---|
-| Frontend | http://localhost:5173 |
-| Backend API | http://127.0.0.1:8000 |
-| API docs (Swagger) | http://127.0.0.1:8000/docs |
-| Health check | http://127.0.0.1:8000/api/health |
+| Service      | URL                              |
+| ------------ | -------------------------------- |
+| Frontend     | http://localhost:5173            |
+| Backend API  | http://127.0.0.1:8000            |
+| Swagger Docs | http://127.0.0.1:8000/docs       |
+| Health Check | http://127.0.0.1:8000/api/health |
 
-### Default login credentials
+The database and default accounts are created automatically when the backend starts for the first time.
 
-| Role | Username | Password |
-|---|---|---|
-| Admin | `admin` | `admin123` |
+---
+
+## Default Login
+
+| Role    | Username  | Password     |
+| ------- | --------- | ------------ |
+| Admin   | `admin`   | `admin123`   |
 | Officer | `officer` | `officer123` |
 
-*(Change these in production — the app's own Change Password feature works from first login.)*
+**For any real deployment, these credentials should be changed immediately.**
 
 ---
 
 ## Future Improvements
 
-- PostgreSQL support for multi-user production deployment (currently SQLite by design, for zero-setup local/demo use)
-- Alembic-based schema migrations in place of the current lightweight startup migration
-- WebSocket/SSE push updates in place of polling for live processing status
-- Distributed (Redis-backed) rate limiting for multi-instance deployments
-- Configurable department/category taxonomy via an admin UI, instead of a fixed list
-- Bulk upload and bulk review actions
-- Email/SMS notifications on approval, rejection, or send-back
-- Multi-language OCR support
-- CI/CD pipeline with automated test coverage on every commit
+Some features we would like to add in the future:
+
+* PostgreSQL for larger multi-user deployments
+* Alembic database migrations
+* WebSocket/SSE-based live updates
+* Redis-based distributed rate limiting
+* Custom department and category management
+* Bulk document upload and review
+* Email/SMS notifications
+* More regional-language OCR support
+* Automated CI/CD and test coverage
 
 ---
 
-## Team Information
+## Team
 
-*Add your team name and members here before submission:*
-
-| Name | Role |
-|---|---|
-| Parth Pawar | Full Backend + Frontend Development, system architecture, AI/OCR integration, and overall technical implementation |
-| Tanmay Shinde | Design in ppt & UI/UX inputs |
-| Sukhada Ugale | Speaker / Project Presenter |
-| Ishwari More | Speaker / Project Presenter. |
+| Name              | Role                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Parth Pawar**   | Full Backend + Frontend Development, system architecture, AI/OCR integration, and overall technical implementation |
+| **Tanmay Shinde** | PPT Design and UI/UX Inputs                                                                                        |
+| **Sukhada Ugale** | Speaker / Project Presenter                                                                                        |
+| **Ishwari More**  | Speaker / Project Presenter                                                                                        |
 
 ---
 
-*Built for the Smart Kopargaon Hackathon.*
+**Built for the Smart Kopargaon Hackathon.**
