@@ -85,6 +85,6 @@ Backend is untouched from Phase 2 - just run it as before:
 
     cd backend
     .venv\Scripts\activate   (Windows)  or  source .venv/bin/activate (Mac/Linux)
-    uvicorn app.main:app --reload --port 8000
+    uvicorn app.main:app --reload --port 8080
 
 Login with admin/admin123 or officer/officer123 exactly as before.

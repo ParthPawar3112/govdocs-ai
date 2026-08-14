@@ -168,7 +168,7 @@ copy .env.example .env
 Add your Gemini API key to `.env`, then start the backend:
 
 ```bash
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8080
 ```
 
 ### Frontend
@@ -184,9 +184,9 @@ npm run dev
 | Service      | URL                              |
 | ------------ | -------------------------------- |
 | Frontend     | http://localhost:5173            |
-| Backend API  | http://127.0.0.1:8000            |
-| Swagger Docs | http://127.0.0.1:8000/docs       |
-| Health Check | http://127.0.0.1:8000/api/health |
+| Backend API  | http://127.0.0.1:8080            |
+| Swagger Docs | http://127.0.0.1:8080/docs       |
+| Health Check | http://127.0.0.1:8080/api/health |
 
 The database and default accounts are created automatically when the backend starts for the first time.
 

@@ -41,9 +41,16 @@ export default {
         glass: "0 8px 32px 0 rgb(15 23 42 / 0.12)",
       },
       keyframes: {
+        // opacity-only: a transform here (even a resolved no-op like
+        // translateY(0)) would persist past the animation's end via this
+        // utility's `both` fill-mode, leaving the animated element's computed
+        // transform as a non-"none" matrix. Per spec, that makes the element
+        // a new containing block for any position:fixed descendant, silently
+        // breaking that descendant's viewport-relative positioning (this bit
+        // FiltersPanel's <aside>, nested inside a fadeIn-animated <main>).
         fadeIn: {
-          from: { opacity: 0, transform: "translateY(6px)" },
-          to: { opacity: 1, transform: "translateY(0)" },
+          from: { opacity: 0 },
+          to: { opacity: 1 },
         },
         slideInRight: {
           from: { opacity: 0, transform: "translateX(8px)" },
