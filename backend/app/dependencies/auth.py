@@ -35,11 +35,33 @@ def get_current_user(
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Phase 8 - gate for endpoints only Admins may call (review, audit log,
-    analytics, settings). Officers still authenticate normally elsewhere."""
+    """Phase 8 - gate for endpoints only Admins may call (audit log, analytics,
+    settings, archive). Officers still authenticate normally elsewhere."""
     if current_user.role != "Admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This action requires Admin privileges.",
+        )
+    return current_user
+
+
+def require_staff(current_user: User = Depends(get_current_user)) -> User:
+    """Government-office roles (Admin or Officer) - the document repository,
+    Smart Search, and the review workflow. Citizens are scoped to their own
+    uploads via the /api/citizen/* endpoints instead."""
+    if current_user.role not in ("Admin", "Officer"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires Officer or Admin privileges.",
+        )
+    return current_user
+
+
+def require_citizen(current_user: User = Depends(get_current_user)) -> User:
+    """Gate for the Citizen self-service endpoints."""
+    if current_user.role != "Citizen":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint is only available to Citizen accounts.",
         )
     return current_user

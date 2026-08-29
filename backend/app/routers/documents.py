@@ -33,7 +33,7 @@ from app.core.constants import (
     SORT_OPTIONS,
 )
 from app.db.database import get_db
-from app.dependencies.auth import get_current_user, require_admin
+from app.dependencies.auth import get_current_user, require_admin, require_staff
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import (
@@ -53,6 +53,15 @@ from app.services.ocr_service import extract_text, process_document_ocr
 logger = logging.getLogger("govdocs.documents")
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+def _enforce_document_access(document: Document, user: User) -> None:
+    """Citizens may only reach their own uploads. Raises 404 (not 403) so the
+    API never confirms that another citizen's document exists - staff (Admin/
+    Officer) are unrestricted. Call right after the `document is None` guard on
+    any route a Citizen is allowed to hit (view / download / summary PDF)."""
+    if user.role == "Citizen" and document.uploaded_by != user.username:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
 # Fields on DocumentUpdate that count as "AI metadata" for audit purposes -
 # used to tell a plain title/department edit apart from a Review-page
@@ -134,7 +143,7 @@ async def upload_document(
 
 @router.get("/filter-options", response_model=FilterOptionsResponse)
 def get_filter_options(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> FilterOptionsResponse:
     """Distinct AI categories and uploader usernames currently in the
@@ -158,7 +167,7 @@ def get_filter_options(
 
 @router.get("/stats", response_model=DocumentStatsResponse)
 def get_document_stats(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> DocumentStatsResponse:
     today = datetime.now(timezone.utc).date()
@@ -193,7 +202,7 @@ def list_documents(
     sort: str | None = Query(default=None, description=f"One of: {', '.join(SORT_OPTIONS)}"),
     page: int = Query(default=1, ge=1),
     limit: int | None = Query(default=None, ge=1, le=200, description="Page size"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> DocumentListResponse:
     if sort and sort not in SORT_OPTIONS:
@@ -234,6 +243,8 @@ def download_document(
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
+    _enforce_document_access(document, current_user)
+
     content = file_storage.read_file(document.filepath)
     audit_service.log_action(db, user=current_user.username, action="Downloaded", document_id=document_id)
     media_type = ALLOWED_UPLOAD_TYPES.get(document.filetype, "application/octet-stream")
@@ -253,6 +264,7 @@ def get_document(
     document = db.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    _enforce_document_access(document, current_user)
     return document
 
 
@@ -260,7 +272,7 @@ def get_document(
 def extract_document_text(
     document_id: int,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> Document:
     """
@@ -313,7 +325,7 @@ def extract_document_text(
 def extract_document_metadata(
     document_id: int,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> Document:
     """
@@ -347,7 +359,7 @@ def extract_document_metadata(
 def update_document(
     document_id: int,
     updates: DocumentUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> Document:
     document = db.get(Document, document_id)
@@ -373,15 +385,16 @@ def update_document(
 def review_document(
     document_id: int,
     review: ReviewRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> Document:
     """
-    Document Approval Workflow (Phase 8) - Admin decision on a document
-    that's finished OCR+AI processing. Approve/Reject/Send Back all follow
-    the same shape: set status, record who/when/why, log it, done. Doesn't
-    require ai_status to be "completed" first - an admin may still need to
-    reject/send-back a document whose AI analysis failed.
+    Document Approval Workflow - an Officer or Admin decision on a document
+    that's finished OCR+AI processing (extended from Admin-only so Officers
+    can verify and decide on Citizen submissions). Approve/Reject/Send Back
+    all follow the same shape: set status, record who/when/why, log it, done.
+    Doesn't require ai_status to be "completed" first - a reviewer may still
+    need to reject/send-back a document whose AI analysis failed.
     """
     document = db.get(Document, document_id)
     if document is None:
@@ -440,6 +453,7 @@ def export_summary_pdf(
     document = db.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    _enforce_document_access(document, current_user)
 
     pdf_bytes = export_service.generate_summary_pdf(document)
     audit_service.log_action(db, user=current_user.username, action="Downloaded", document_id=document_id, details="Summary PDF")
@@ -453,7 +467,7 @@ def export_summary_pdf(
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     document_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_staff),
     db: Session = Depends(get_db),
 ) -> None:
     document = db.get(Document, document_id)

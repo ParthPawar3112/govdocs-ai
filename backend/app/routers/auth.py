@@ -1,6 +1,7 @@
-"""Login, logout, and current-user endpoints for Phase 2 authentication."""
+"""Login, logout, current-user, and public Citizen registration endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
@@ -11,12 +12,64 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     MessageResponse,
+    RegisterRequest,
     TokenResponse,
     UserResponse,
 )
 from app.services import audit_service, login_rate_limit
+from app.services.citizen_id import next_citizen_id
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
+    """
+    Public self-service sign-up. This route ONLY ever creates Citizen accounts -
+    the role is hard-coded here and never read from the request, so Admin/Officer
+    provisioning stays out of the public surface. Reuses the existing bcrypt
+    hash_password and, on the frontend, the existing /login + JWT flow right
+    after (no second auth system). The new/confirm-match and duplicate-username
+    checks are done here so their messages can be exact.
+    """
+    if payload.password != payload.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password and confirmation do not match.",
+        )
+
+    username = payload.username.strip()
+    if db.query(User).filter(User.username == username).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already exists. Please choose another username.",
+        )
+
+    # One retry absorbs a concurrent registration grabbing the same citizen_id
+    # (the column has a UNIQUE index - see app/db/migrate.py).
+    for attempt in range(2):
+        user = User(
+            username=username,
+            password_hash=hash_password(payload.password),
+            role="Citizen",
+            full_name=payload.full_name.strip(),
+            citizen_id=next_citizen_id(db),
+        )
+        db.add(user)
+        try:
+            db.commit()
+            break
+        except IntegrityError:
+            db.rollback()
+            if attempt == 1:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Username already exists. Please choose another username.",
+                )
+    db.refresh(user)
+
+    audit_service.log_action(db, user=user.username, action="Citizen Registered")
+    return user
 
 
 @router.post("/login", response_model=TokenResponse)

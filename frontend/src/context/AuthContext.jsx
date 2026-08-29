@@ -1,6 +1,6 @@
 // Context that restores, manages, and clears the browser's authenticated session.
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
-import { currentUserRequest, loginRequest, logoutRequest } from "../api/auth";
+import { currentUserRequest, loginRequest, logoutRequest, registerRequest } from "../api/auth";
 import { TOKEN_KEY } from "../api/client";
 
 export const AuthContext = createContext(null);
@@ -39,6 +39,16 @@ export function AuthProvider({ children }) {
     setUser(userResponse.data);
   }, []);
 
+  // Citizen sign-up: create the account, then reuse the exact same login path
+  // above so there's only ever one way a session starts.
+  const register = useCallback(
+    async ({ full_name, username, password, confirm_password }) => {
+      await registerRequest({ full_name, username, password, confirm_password });
+      await login({ username, password });
+    },
+    [login]
+  );
+
   const logout = useCallback(async () => {
     try {
       if (localStorage.getItem(TOKEN_KEY)) await logoutRequest();
@@ -48,8 +58,8 @@ export function AuthProvider({ children }) {
   }, [clearSession]);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, logout }),
-    [user, isLoading, login, logout]
+    () => ({ user, isLoading, login, register, logout }),
+    [user, isLoading, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

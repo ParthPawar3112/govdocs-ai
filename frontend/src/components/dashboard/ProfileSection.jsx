@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Hash, KeyRound, ShieldCheck } from "lucide-react";
+import { AtSign, BadgeCheck, Calendar, Hash, KeyRound, ShieldCheck, User as UserIcon } from "lucide-react";
 import Avatar from "../ui/Avatar";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -10,8 +10,13 @@ import { formatDateTime } from "../../utils/format";
 export default function ProfileSection({ user, onLogout }) {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
+  const isCitizen = Boolean(user.citizen_id);
   const fields = [
-    { icon: Hash, label: "User ID", value: `#${user.id}` },
+    ...(user.full_name ? [{ icon: UserIcon, label: "Full name", value: user.full_name }] : []),
+    ...(isCitizen ? [{ icon: AtSign, label: "Username", value: user.username }] : []),
+    isCitizen
+      ? { icon: BadgeCheck, label: "Citizen ID", value: user.citizen_id }
+      : { icon: Hash, label: "User ID", value: `#${user.id}` },
     { icon: ShieldCheck, label: "Role", value: user.role },
     { icon: Calendar, label: "Account created", value: formatDateTime(new Date(user.created_at)) },
   ];

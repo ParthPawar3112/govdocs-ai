@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import LoginForm from "../components/auth/LoginForm";
+import SignupForm from "../components/auth/SignupForm";
 import DocumentIntelligencePanel from "../components/illustrations/DocumentIntelligencePanel";
 import Logo from "../components/ui/Logo";
 import { useAuth } from "../hooks/useAuth";
@@ -16,14 +17,20 @@ const CAPABILITIES = [
 ];
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   // The login page renders before authentication, so DashboardLayout's dark-mode
   // hook (which applies the "dark" class the whole app's dark: styles depend on)
   // hasn't mounted yet - calling it here applies the user's saved/system theme
   // preference immediately, the same theme system the rest of the app already uses.
   useDarkMode();
+  const [mode, setMode] = useState("login"); // "login" | "signup"
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const switchMode = (next) => {
+    setMode(next);
+    setError("");
+  };
 
   const handleLogin = async (credentials) => {
     setError("");
@@ -36,6 +43,25 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleRegister = async (payload) => {
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await register(payload);
+    } catch (requestError) {
+      const detail = requestError.response?.data?.detail;
+      setError(
+        typeof detail === "string"
+          ? detail
+          : "Unable to create your account. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isSignup = mode === "signup";
 
   return (
     <main className="grid h-screen lg:grid-cols-[1.75fr_1fr]">
@@ -107,8 +133,8 @@ export default function LoginPage() {
         {/* one quiet ambient glow, centered behind the panel - light, not decorative "blobs" */}
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-100/35 blur-3xl dark:bg-primary/[0.07]" />
 
-        <div className="relative flex h-full w-full max-w-[440px] items-center py-4 lg:h-[84%] lg:py-0">
-          <div className="relative flex w-full flex-col justify-center overflow-hidden rounded-[32px] bg-white ring-1 ring-black/[0.04] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.28)] dark:bg-slate-900 dark:ring-white/[0.06] lg:h-full">
+        <div className="relative flex h-full w-full max-w-[440px] items-center py-4 lg:min-h-[84%] lg:py-0">
+          <div className="relative flex w-full flex-col justify-center overflow-hidden rounded-[32px] bg-white ring-1 ring-black/[0.04] shadow-[0_24px_70px_-24px_rgba(15,23,42,0.28)] dark:bg-slate-900 dark:ring-white/[0.06] lg:min-h-full">
             {/* soft internal wash - gives the surface quiet depth instead of a flat rectangle */}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-primary-50 to-transparent dark:from-primary/10" />
 
@@ -121,15 +147,31 @@ export default function LoginPage() {
                   GovDocs AI
                 </p>
                 <h2 className="mt-2 text-4xl font-extrabold tracking-tight text-ink dark:text-slate-100">
-                  Welcome back
+                  {isSignup ? "Create Citizen Account" : "Welcome back"}
                 </h2>
                 <p className="mt-2 text-sm text-ink-soft">
-                  Sign in to continue to your GovDocs AI workspace.
+                  {isSignup
+                    ? "Register to submit documents digitally and track their review status."
+                    : "Sign in to continue to your GovDocs AI workspace."}
                 </p>
               </div>
 
               <div className="mt-8">
-                <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} error={error} />
+                {isSignup ? (
+                  <SignupForm
+                    onSubmit={handleRegister}
+                    isSubmitting={isSubmitting}
+                    error={error}
+                    onSwitchToLogin={() => switchMode("login")}
+                  />
+                ) : (
+                  <LoginForm
+                    onSubmit={handleLogin}
+                    isSubmitting={isSubmitting}
+                    error={error}
+                    onSwitchToSignup={() => switchMode("signup")}
+                  />
+                )}
               </div>
 
               <div className="mt-6 flex items-center justify-center gap-1.5 border-t border-line pt-5 text-xs text-ink-soft dark:border-slate-800">

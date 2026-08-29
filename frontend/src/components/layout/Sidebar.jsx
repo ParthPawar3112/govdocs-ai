@@ -2,7 +2,7 @@
 // Mobile: off-canvas, opened via the navbar's menu button.
 import clsx from "clsx";
 import { ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
-import { NAV_SECTIONS } from "../../config/navigation";
+import { sectionsForRole } from "../../config/navigation";
 import Logo from "../ui/Logo";
 
 export default function Sidebar({
@@ -20,8 +20,9 @@ export default function Sidebar({
     onCloseMobile();
   };
 
-  // Phase 8 - Review Queue/Audit/Analytics/Settings are Admin-only.
-  const visibleSections = NAV_SECTIONS.filter((section) => !section.adminOnly || role === "Admin");
+  // Role-scoped nav - see config/navigation.js. Backend RBAC enforces the
+  // same boundaries regardless of what's rendered here.
+  const visibleSections = sectionsForRole(role);
 
   return (
     <>

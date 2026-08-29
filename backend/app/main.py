@@ -22,6 +22,7 @@ from app.db.migrate import (
     ensure_ocr_text_column,
     ensure_review_columns,
     ensure_search_indexes,
+    ensure_user_profile_columns,
 )
 from app.models.app_setting import AppSetting  # noqa: F401 - registers table with Base.metadata
 from app.models.audit_log import AuditLog  # noqa: F401 - registers table with Base.metadata
@@ -30,6 +31,7 @@ from app.models.user import User  # noqa: F401 - registers table with Base.metad
 from app.routers.analytics import router as analytics_router
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
+from app.routers.citizen import router as citizen_router
 from app.routers.documents import router as documents_router
 from app.routers.settings import router as settings_router
 from app.services.seed import seed_default_users
@@ -55,6 +57,7 @@ app.add_middleware(
 # reuse the current-user dependency without expanding this application module.
 app.include_router(auth_router)
 app.include_router(documents_router)
+app.include_router(citizen_router)
 app.include_router(analytics_router)
 app.include_router(audit_router)
 app.include_router(settings_router)
@@ -84,6 +87,7 @@ def verify_database_on_startup() -> None:
     ensure_ai_output_language_column(engine)
     ensure_search_indexes(engine)
     ensure_review_columns(engine)
+    ensure_user_profile_columns(engine)
     seed_default_users()
     seed_default_settings()
     with engine.connect() as connection:

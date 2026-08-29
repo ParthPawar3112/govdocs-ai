@@ -9,6 +9,9 @@ import PlaceholderSection from "../components/dashboard/PlaceholderSection";
 import DocumentsSection from "../components/documents/DocumentsSection";
 import SmartSearchSection from "../components/search/SmartSearchSection";
 import ReviewQueueSection from "../components/review/ReviewQueueSection";
+import CitizenDashboard from "../components/citizen/CitizenDashboard";
+import CitizenDocumentsSection from "../components/citizen/CitizenDocumentsSection";
+import CitizenUploadSection from "../components/citizen/CitizenUploadSection";
 import AnalyticsSection from "../components/analytics/AnalyticsSection";
 import AuditLogSection from "../components/audit/AuditLogSection";
 import SettingsSection from "../components/settings/SettingsSection";
@@ -27,7 +30,24 @@ export default function DashboardPage() {
   // activity timeline so both show the same real event instead of drifting.
   const [sessionStartedAt] = useState(() => new Date());
 
-  const renderSection = () => {
+  const isCitizen = user.role === "Citizen";
+  const isStaff = user.role === "Admin" || user.role === "Officer";
+
+  const renderCitizenSection = () => {
+    switch (activeSection) {
+      case "my-documents":
+        return <CitizenDocumentsSection />;
+      case "upload":
+        return <CitizenUploadSection onNavigate={setActiveSection} />;
+      case "profile":
+        return <ProfileSection user={user} onLogout={logout} />;
+      case "dashboard":
+      default:
+        return <CitizenDashboard user={user} onNavigate={setActiveSection} />;
+    }
+  };
+
+  const renderStaffSection = () => {
     switch (activeSection) {
       case "dashboard":
         return (
@@ -42,7 +62,7 @@ export default function DashboardPage() {
       case "search":
         return <SmartSearchSection />;
       case "workflow":
-        return user.role === "Admin" ? <ReviewQueueSection /> : <PlaceholderSection section={getSection(activeSection)} />;
+        return isStaff ? <ReviewQueueSection /> : <PlaceholderSection section={getSection(activeSection)} />;
       case "analytics":
         return user.role === "Admin" ? <AnalyticsSection /> : <PlaceholderSection section={getSection(activeSection)} />;
       case "audit":
@@ -55,6 +75,8 @@ export default function DashboardPage() {
         return <PlaceholderSection section={getSection(activeSection)} />;
     }
   };
+
+  const renderSection = () => (isCitizen ? renderCitizenSection() : renderStaffSection());
 
   return (
     <ToastProvider>

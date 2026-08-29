@@ -8,7 +8,7 @@ import Button from "../ui/Button";
 
 const REMEMBER_KEY = "govdocs_remembered_username";
 
-export default function LoginForm({ onSubmit, isSubmitting, error }) {
+export default function LoginForm({ onSubmit, isSubmitting, error, onSwitchToSignup }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -121,6 +121,19 @@ export default function LoginForm({ onSubmit, isSubmitting, error }) {
       >
         {isSubmitting ? "Signing in..." : "Sign in"}
       </Button>
+
+      {onSwitchToSignup && (
+        <p className="text-center text-sm text-ink-soft">
+          Don&apos;t have an account?{" "}
+          <button
+            type="button"
+            onClick={onSwitchToSignup}
+            className="font-semibold text-primary hover:text-primary-dark"
+          >
+            Sign up as a Citizen
+          </button>
+        </p>
+      )}
     </form>
   );
 }

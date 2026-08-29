@@ -1,5 +1,16 @@
 """Shared constants for the Document Management module (Phase 4)."""
 
+# Application roles. "Admin"/"Officer" are seeded; "Citizen" is created via the
+# public POST /api/auth/register flow. Casing is significant - RBAC checks
+# compare against these exact strings.
+ROLES = ("Admin", "Officer", "Citizen")
+STAFF_ROLES = ("Admin", "Officer")
+
+# Human-readable public identity for Citizen accounts - CIT-000001, CIT-000002...
+# (6-digit zero-padded). See app/services/citizen_id.py.
+CITIZEN_ID_PREFIX = "CIT-"
+CITIZEN_ID_PAD = 6
+
 DEPARTMENTS = (
     "Revenue",
     "Education",
@@ -38,6 +49,8 @@ DEFAULT_PAGE_SIZE = 20
 # is a plain string) - kept here so every call site uses the same wording.
 AUDIT_ACTIONS = (
     "Login",
+    "Citizen Registered",
+    "Citizen Viewed Document",
     "Upload",
     "OCR Started",
     "OCR Completed",

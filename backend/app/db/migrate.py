@@ -31,6 +31,27 @@ def _ensure_columns(engine: Engine, table: str, column_defs: dict[str, str]) -> 
         connection.commit()
 
 
+def ensure_user_profile_columns(engine: Engine) -> None:
+    """Citizen role - adds full_name + citizen_id to a pre-existing `users`
+    table. SQLite can't add a UNIQUE column via ALTER TABLE, so citizen_id is
+    added as a plain column and a UNIQUE INDEX is created separately (a SQLite
+    unique index permits many NULL rows, which is exactly what we want -
+    Admin/Officer rows carry NULL here)."""
+    _ensure_columns(
+        engine,
+        "users",
+        {"full_name": "VARCHAR(120)", "citizen_id": "VARCHAR(20)"},
+    )
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return  # fresh DB - create_all() + the model's own constraints cover this
+    with engine.connect() as connection:
+        connection.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_citizen_id ON users (citizen_id)")
+        )
+        connection.commit()
+
+
 def ensure_ocr_text_column(engine: Engine) -> None:
     """Phase 5."""
     _ensure_columns(engine, "documents", {"ocr_text": "TEXT"})

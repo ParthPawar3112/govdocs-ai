@@ -7,15 +7,19 @@ import Card from "../ui/Card";
 const ACTIONS = [
   { key: "documents", label: "Upload document", icon: FileUp },
   { key: "search", label: "Search documents", icon: Search },
-  // Phase 8 - Review Queue/Analytics/Audit/Settings are Admin-only (see Sidebar).
-  { key: "workflow", label: "Review queue", icon: GitBranch, adminOnly: true },
+  // Review Queue is Officer + Admin; Analytics/Audit/Settings stay Admin-only (see Sidebar).
+  { key: "workflow", label: "Review queue", icon: GitBranch, staffOnly: true },
   { key: "analytics", label: "View analytics", icon: BarChart3, adminOnly: true },
   { key: "audit", label: "Audit logs", icon: History, adminOnly: true },
   { key: "settings", label: "Settings", icon: SettingsIcon, adminOnly: true },
 ];
 
 export default function QuickActions({ role, onNavigate }) {
-  const visibleActions = ACTIONS.filter((action) => !action.adminOnly || role === "Admin");
+  const visibleActions = ACTIONS.filter(
+    (action) =>
+      (!action.adminOnly || role === "Admin") &&
+      (!action.staffOnly || role === "Admin" || role === "Officer")
+  );
 
   return (
     <Card>
