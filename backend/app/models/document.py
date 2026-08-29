@@ -75,3 +75,8 @@ class Document(Base):
     admin_remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(String(50), nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Document Trust & Verification ("The Bad Reading") - provenance fingerprint
+    # of the uploaded bytes. Nullable: rows predating this feature stay valid,
+    # and it's backfilled lazily when a document is (re)analysed.
+    file_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)

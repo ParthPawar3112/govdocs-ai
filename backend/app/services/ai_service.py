@@ -27,6 +27,17 @@ from app.services import ai_status, audit_service
 
 logger = logging.getLogger("govdocs.ai")
 
+
+def _journal(document_id: int, status: str) -> None:
+    """Best-effort 'The Blackout' operation journal - never breaks AI."""
+    try:
+        from app.services import blackout
+
+        blackout.journal("ai", document_id, status)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 MAX_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 2
 
@@ -202,6 +213,7 @@ def process_document_ai(document_id: int) -> None:
     logger.info(f"AI metadata extraction starting for document {document_id}")
     ai_status.mark_processing(document_id)
 
+    should_verify = False
     db = SessionLocal()
     try:
         document = db.get(Document, document_id)
@@ -213,8 +225,10 @@ def process_document_ai(document_id: int) -> None:
                 f"AI metadata extraction skipped for document {document_id} - no OCR text available"
             )
             return
+        should_verify = True
 
         audit_service.log_action(db, user=document.uploaded_by, action="AI Started", document_id=document_id)
+        _journal(document_id, "started")
 
         # Read the per-document choice made at upload time rather than taking
         # a new parameter here - process_document_ai is called from both the
@@ -241,6 +255,7 @@ def process_document_ai(document_id: int) -> None:
                     db, user=document.uploaded_by, action="AI Completed", document_id=document_id,
                     details=f"confidence={metadata['ai_confidence']}",
                 )
+                _journal(document_id, "completed")
                 return
             except AIConfigurationError as exc:
                 # Not worth retrying - a missing API key won't fix itself
@@ -269,6 +284,19 @@ def process_document_ai(document_id: int) -> None:
             db, user=document.uploaded_by, action="AI Failed", document_id=document_id,
             details=str(last_error)[:500],
         )
+        _journal(document_id, "failed")
     finally:
         ai_status.clear_processing(document_id)
         db.close()
+
+    # Chain the Document Trust & Verification layer ("The Bad Reading").
+    # Runs whether AI metadata succeeded or not - it can still assess
+    # provenance and extract heuristic claims. Fully isolated: its own DB
+    # session, and any failure here is logged, never propagated.
+    if should_verify:
+        try:
+            from app.services.verification_service import process_document_verification
+
+            process_document_verification(document_id)
+        except Exception:  # noqa: BLE001
+            logger.exception(f"verification chain failed for document {document_id}")

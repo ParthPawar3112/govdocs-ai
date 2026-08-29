@@ -76,6 +76,12 @@ class DocumentResponse(BaseModel):
     reviewed_by: str | None
     reviewed_at: datetime | None
 
+    # Document Trust & Verification ("The Bad Reading") - a compact block
+    # {status, trust_score, trust_band, source_type, review_status, ...} or
+    # None if the document has not been assessed yet. Populated by the
+    # router, not the ORM (see app/services/verification_service.compact_bulk).
+    verification: dict | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @computed_field

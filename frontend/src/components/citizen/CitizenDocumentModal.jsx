@@ -10,6 +10,7 @@ import Button from "../ui/Button";
 import StatusBadge from "../documents/StatusBadge";
 import OriginalDocumentPanel from "../documents/OriginalDocumentPanel";
 import DocumentTimeline from "../documents/DocumentTimeline";
+import VerificationPanel from "../verification/VerificationPanel";
 import { fetchDocumentBlobRequest } from "../../api/documents";
 import { getCitizenDocumentRequest } from "../../api/citizen";
 import { useAuth } from "../../hooks/useAuth";
@@ -117,6 +118,10 @@ export default function CitizenDocumentModal({ isOpen, onClose, document: doc })
         />
 
         <DocumentTimeline document={timelineDoc} />
+
+        {/* Trust & Verification ("The Bad Reading") - read-only for the citizen,
+            but they may still send their own document for a human review. */}
+        <VerificationPanel documentId={view.id} isStaff={false} canSubmit />
 
         {needsAttention && (
           <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-sm dark:border-orange-500/30 dark:bg-orange-500/10">

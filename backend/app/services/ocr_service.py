@@ -24,6 +24,16 @@ from app.services import audit_service, ocr_status
 
 logger = logging.getLogger("govdocs.ocr")
 
+
+def _journal(document_id: int, status: str) -> None:
+    """Best-effort 'The Blackout' operation journal - never breaks OCR."""
+    try:
+        from app.services import blackout
+
+        blackout.journal("ocr", document_id, status)
+    except Exception:  # noqa: BLE001
+        pass
+
 IMAGE_TYPES = {"jpg", "jpeg", "png"}
 PDF_TYPES = {"pdf"}
 
@@ -138,6 +148,7 @@ def process_document_ocr(document_id: int) -> None:
             return
 
         audit_service.log_action(db, user=document.uploaded_by, action="OCR Started", document_id=document_id)
+        _journal(document_id, "started")
 
         text = extract_text(document.filepath, document.filetype)
         document.ocr_text = text
@@ -149,8 +160,10 @@ def process_document_ocr(document_id: int) -> None:
             db, user=document.uploaded_by, action="OCR Completed", document_id=document_id,
             details=f"{len(text)} characters extracted",
         )
+        _journal(document_id, "completed")
     except Exception as exc:
         logger.exception(f"OCR failed for document {document_id}")
+        _journal(document_id, "failed")
         ocr_status.mark_failed(document_id)
         document = db.get(Document, document_id)
         if document is not None:

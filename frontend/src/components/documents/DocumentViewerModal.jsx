@@ -12,6 +12,7 @@ import OriginalDocumentPanel from "./OriginalDocumentPanel";
 import ExtractedTextPanel from "./ExtractedTextPanel";
 import AIAnalysisPanel from "./AIAnalysisPanel";
 import DocumentTimeline from "./DocumentTimeline";
+import VerificationPanel from "../verification/VerificationPanel";
 import {
   extractMetadataRequest,
   extractTextRequest,
@@ -19,6 +20,7 @@ import {
   fetchSummaryPdfRequest,
   getDocumentRequest,
 } from "../../api/documents";
+import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 import { formatDateTime } from "../../utils/format";
 
@@ -26,6 +28,8 @@ const POLL_INTERVAL_MS = 2500;
 
 export default function DocumentViewerModal({ isOpen, onClose, document: doc }) {
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const isStaff = user?.role === "Admin" || user?.role === "Officer";
   const [blobUrl, setBlobUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -249,6 +253,9 @@ export default function DocumentViewerModal({ isOpen, onClose, document: doc }) 
             isRetrying={isRetryingAi}
           />
         )}
+
+        {/* 4b. Verification & Trust ("The Bad Reading") */}
+        <VerificationPanel documentId={doc.id} isStaff={isStaff} canSubmit />
 
         {/* 5. Document Metadata / Actions */}
         <div className="rounded-xl border border-line p-4 dark:border-slate-800">

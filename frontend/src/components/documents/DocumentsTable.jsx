@@ -4,6 +4,7 @@ import EmptyState from "../ui/EmptyState";
 import { Skeleton } from "../ui/Skeleton";
 import StatusBadge from "./StatusBadge";
 import HighlightedText from "./HighlightedText";
+import VerificationBadge from "../verification/VerificationBadge";
 import { formatDateTime, isImageFile } from "../../utils/format";
 
 const COLUMNS = ["Document", "Department", "Uploaded by", "Upload date", "Status", "Actions"];
@@ -115,7 +116,12 @@ export default function DocumentsTable({
                     {formatDateTime(new Date(doc.upload_date))}
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5">
-                    <StatusBadge status={doc.lifecycle_status} />
+                    <div className="flex flex-col items-start gap-1">
+                      <StatusBadge status={doc.lifecycle_status} />
+                      {doc.verification?.status && doc.verification.status !== "UNVERIFIED" && (
+                        <VerificationBadge status={doc.verification.status} size="sm" />
+                      )}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5">
                     <div className="flex items-center gap-0.5">

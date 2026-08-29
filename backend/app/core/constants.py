@@ -67,9 +67,70 @@ AUDIT_ACTIONS = (
     "Deleted",
     "Settings Updated",
     "Password Changed",
+    # Document Trust & Verification ("The Bad Reading").
+    "Verification Completed",
+    "Verification Failed",
+    "Sent for Trust Review",
+    "Trust Review Decision",
 )
 
 DEFAULT_AI_CONFIDENCE_THRESHOLD = 60.0
+
+# --------------------------------------------------------------------------- #
+# Document Trust & Verification ("The Bad Reading" challenge)                   #
+# --------------------------------------------------------------------------- #
+# A verification_status is an EVIDENCE-BASED CLASSIFICATION, never a claim of
+# absolute truth. Uncertain information stays explicitly uncertain.
+VERIFICATION_STATUSES = ("VERIFIED", "CORROBORATED", "NEEDS_REVIEW", "FLAGGED", "OUTDATED", "UNVERIFIED")
+
+SOURCE_TYPES = ("official", "departmental", "trusted_external", "user_submitted", "unknown")
+SOURCE_TYPE_LABELS = {
+    "official": "Official source",
+    "departmental": "Departmental source",
+    "trusted_external": "Trusted external source",
+    "user_submitted": "User-submitted source",
+    "unknown": "Unknown source",
+}
+# Points contributed to the trust assessment by source authority.
+SOURCE_TYPE_AUTHORITY = {
+    "official": 30,
+    "departmental": 20,
+    "trusted_external": 12,
+    "user_submitted": 0,
+    "unknown": -10,
+}
+
+CLAIM_TYPES = (
+    "monetary", "eligibility", "date", "deadline", "policy", "statistic", "contact", "other",
+)
+
+# Reviewer decisions in the human-in-the-loop workflow -> resulting base status.
+# "mark_outdated" is special: it sets currency_status="outdated" and leaves the
+# base classification untouched (a document can be accurate but superseded).
+REVIEW_DECISIONS = {
+    "verified": "VERIFIED",
+    "corroborated": "CORROBORATED",
+    "needs_more_evidence": "NEEDS_REVIEW",
+    "flagged": "FLAGGED",
+    "mark_outdated": None,
+}
+
+# Language that marks a document as replacing earlier guidance (Feature 7).
+SUPERSEDE_TOKENS = (
+    "supersedes", "superseded", "in supersession", "supersession of",
+    "replaces the earlier", "replaces earlier", "in modification of",
+    "revised guidance", "revision no", "amendment to circular",
+    "deadline extended", "date extended", "extended to", "revised deadline",
+)
+
+# Tokens that, in a government-document context, are weak signals of an
+# informal forward / manipulated notice rather than an issued document.
+SUSPICIOUS_CONTENT_TOKENS = (
+    "forwarded as received", "forwarded message", "whatsapp", "viral", "share widely",
+    "share this", "please forward", "fwd:", "breaking", "urgent alert", "govt alert",
+    "limited period", "act now", "before it is deleted", "before it's deleted",
+    "click here to claim", "register now to get", "100% guaranteed",
+)
 
 # AI output-language toggle - which language ai_title/ai_summary are written
 # in (see app/services/ai_service.py LANGUAGE_INSTRUCTIONS). Deliberately

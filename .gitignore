@@ -8,6 +8,9 @@ backend/.env
 backend/*.db
 backend/*.sqlite3
 
+# Blackout / recovery demo artefacts (snapshot, journal, events, state)
+backend/recovery/
+
 # Node
 frontend/node_modules/
 

@@ -14,8 +14,10 @@ import {
   GitBranch,
   History,
   LayoutDashboard,
+  LifeBuoy,
   Search,
   Settings,
+  ShieldCheck,
   UserCircle,
 } from "lucide-react";
 
@@ -28,9 +30,13 @@ export const NAV_SECTIONS = [
   { key: "search", label: "Smart Search", icon: Search, live: true, roles: ALL_STAFF },
   // Officer + Admin: Officers verify and decide on submissions, Admins too.
   { key: "workflow", label: "Review Queue", icon: GitBranch, live: true, roles: ALL_STAFF },
+  // "The Bad Reading" - document trust & verification review.
+  { key: "verification", label: "Trust & Verification", icon: ShieldCheck, live: true, roles: ALL_STAFF },
   { key: "audit", label: "Audit Logs", icon: History, live: true, roles: ["Admin"] },
   { key: "analytics", label: "Analytics", icon: BarChart3, live: true, roles: ["Admin"] },
   { key: "settings", label: "Settings", icon: Settings, live: true, roles: ["Admin"] },
+  // "The Blackout" challenge - disaster recovery / data-resilience console.
+  { key: "recovery", label: "Recovery Center", icon: LifeBuoy, live: true, roles: ["Admin"] },
   // Citizen-only self-service.
   { key: "my-documents", label: "My Documents", icon: FolderOpen, live: true, roles: ["Citizen"] },
   { key: "upload", label: "Upload Document", icon: FileUp, live: true, roles: ["Citizen"] },

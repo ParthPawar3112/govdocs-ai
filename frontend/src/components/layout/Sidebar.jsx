@@ -66,13 +66,22 @@ export default function Sidebar({
           {visibleSections.map(({ key, label, icon: Icon }) => {
             const isActive = activeSection === key;
             return (
-              <button
+              // Real anchor with a hash href so the browser offers
+              // "Open link in new tab" / middle-click / Ctrl+click. A plain
+              // left-click is intercepted and handled as an in-app section
+              // switch (DashboardPage reads the hash on load - see there).
+              <a
                 key={key}
-                onClick={() => handleSelect(key)}
+                href={`#${key}`}
+                onClick={(event) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+                  event.preventDefault();
+                  handleSelect(key);
+                }}
                 title={isCollapsed ? label : undefined}
                 aria-current={isActive ? "page" : undefined}
                 className={clsx(
-                  "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                  "group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium no-underline transition-all duration-150",
                   isCollapsed && "lg:justify-center",
                   isActive
                     ? "bg-white/15 text-white"
@@ -84,7 +93,7 @@ export default function Sidebar({
                 )}
                 <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
                 <span className={clsx("truncate", isCollapsed && "lg:hidden")}>{label}</span>
-              </button>
+              </a>
             );
           })}
         </nav>

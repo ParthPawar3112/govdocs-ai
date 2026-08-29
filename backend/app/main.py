@@ -19,21 +19,31 @@ from app.db.database import Base, engine, get_db
 from app.db.migrate import (
     ensure_ai_metadata_columns,
     ensure_ai_output_language_column,
+    ensure_document_provenance_columns,
     ensure_ocr_text_column,
     ensure_review_columns,
     ensure_search_indexes,
     ensure_user_profile_columns,
+    ensure_verification_currency_columns,
 )
 from app.models.app_setting import AppSetting  # noqa: F401 - registers table with Base.metadata
 from app.models.audit_log import AuditLog  # noqa: F401 - registers table with Base.metadata
 from app.models.document import Document  # noqa: F401 - registers table with Base.metadata
 from app.models.user import User  # noqa: F401 - registers table with Base.metadata
+from app.models.verification import (  # noqa: F401 - registers verification tables with Base.metadata
+    ClaimContradiction,
+    DocumentClaim,
+    DocumentVerification,
+    VerificationEvent,
+)
 from app.routers.analytics import router as analytics_router
 from app.routers.audit import router as audit_router
 from app.routers.auth import router as auth_router
 from app.routers.citizen import router as citizen_router
 from app.routers.documents import router as documents_router
+from app.routers.recovery import router as recovery_router
 from app.routers.settings import router as settings_router
+from app.routers.verification import router as verification_router
 from app.services.seed import seed_default_users
 from app.services.settings_service import seed_default_settings
 
@@ -61,6 +71,8 @@ app.include_router(citizen_router)
 app.include_router(analytics_router)
 app.include_router(audit_router)
 app.include_router(settings_router)
+app.include_router(recovery_router)
+app.include_router(verification_router)
 
 
 @app.exception_handler(Exception)
@@ -88,11 +100,24 @@ def verify_database_on_startup() -> None:
     ensure_search_indexes(engine)
     ensure_review_columns(engine)
     ensure_user_profile_columns(engine)
+    ensure_document_provenance_columns(engine)
+    ensure_verification_currency_columns(engine)
     seed_default_users()
     seed_default_settings()
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
     print(f"[GovDocs AI] Database connection verified -> {settings.DATABASE_URL}")
+
+    # "The Blackout" challenge: make sure a verified recovery snapshot always
+    # exists so the Recovery Center is demo-ready from a cold start. Never
+    # fatal - the app runs fine without it.
+    try:
+        from app.services import blackout
+
+        if blackout.get_snapshot() is None:
+            blackout.create_snapshot()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[GovDocs AI] baseline recovery snapshot skipped: {exc}")
 
 
 @app.get("/api/health", tags=["health"])

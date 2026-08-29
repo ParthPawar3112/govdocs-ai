@@ -47,11 +47,26 @@ function validateFile(file) {
   return null;
 }
 
+const SOURCE_TYPE_OPTIONS = [
+  { value: "", label: "Auto-detect from my role" },
+  { value: "official", label: "Official source" },
+  { value: "departmental", label: "Departmental source" },
+  { value: "trusted_external", label: "Trusted external source" },
+  { value: "user_submitted", label: "User-submitted source" },
+  { value: "unknown", label: "Unknown source" },
+];
+
 const initialForm = {
   title: "",
   department: DEPARTMENTS[0],
   description: "",
   outputLanguage: DEFAULT_AI_OUTPUT_LANGUAGE,
+  // Provenance for the Trust & Verification layer - all optional; anything
+  // left blank is shown as "Unknown", never invented.
+  sourceType: "",
+  sourceReferenceNo: "",
+  sourcePublishedDate: "",
+  sourceUrl: "",
 };
 
 export default function UploadModal({ isOpen, onClose, onUploaded }) {
@@ -126,6 +141,10 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
     formData.append("department", form.department);
     formData.append("description", form.description.trim());
     formData.append("output_language", form.outputLanguage);
+    if (form.sourceType) formData.append("source_type", form.sourceType);
+    if (form.sourceReferenceNo.trim()) formData.append("source_reference_no", form.sourceReferenceNo.trim());
+    if (form.sourcePublishedDate.trim()) formData.append("source_published_date", form.sourcePublishedDate.trim());
+    if (form.sourceUrl.trim()) formData.append("source_url", form.sourceUrl.trim());
     formData.append("file", file);
 
     setIsUploading(true);
@@ -313,6 +332,56 @@ export default function UploadModal({ isOpen, onClose, onUploaded }) {
             placeholder="Brief notes about this document..."
           />
         </label>
+
+        {/* Provenance for the Trust & Verification layer - all optional. */}
+        <details className="rounded-lg border border-line px-3 py-2 dark:border-slate-700">
+          <summary className="cursor-pointer text-sm font-medium text-ink dark:text-slate-200">
+            Source &amp; provenance <span className="font-normal text-ink-soft">(optional, improves trust assessment)</span>
+          </summary>
+          <div className="mt-3 space-y-3">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink-soft">Source type</span>
+              <select
+                value={form.sourceType}
+                onChange={(event) => setForm((c) => ({ ...c, sourceType: event.target.value }))}
+                className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                {SOURCE_TYPE_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-ink-soft">Reference / circular no.</span>
+                <input
+                  value={form.sourceReferenceNo}
+                  onChange={(event) => setForm((c) => ({ ...c, sourceReferenceNo: event.target.value }))}
+                  className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  placeholder="e.g. PMK/2024/CIRC/118"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-ink-soft">Publication date</span>
+                <input
+                  value={form.sourcePublishedDate}
+                  onChange={(event) => setForm((c) => ({ ...c, sourcePublishedDate: event.target.value }))}
+                  className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  placeholder="e.g. 2024-06-01"
+                />
+              </label>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink-soft">Source link</span>
+              <input
+                value={form.sourceUrl}
+                onChange={(event) => setForm((c) => ({ ...c, sourceUrl: event.target.value }))}
+                className="h-9 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none focus:border-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                placeholder="https://…"
+              />
+            </label>
+          </div>
+        </details>
 
         {isUploading && (
           <div className="space-y-1.5">

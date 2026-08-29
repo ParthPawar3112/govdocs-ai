@@ -46,7 +46,10 @@ from app.schemas.document import (
 )
 from app.services import audit_service, export_service, file_storage, ocr_status
 from app.services import ai_status
+from app.services import blackout
 from app.services import search_service
+from app.services import verification_service
+from app.services.blackout import guard_primary_store
 from app.services.ai_service import process_document_ai
 from app.services.ocr_service import extract_text, process_document_ocr
 
@@ -69,7 +72,12 @@ def _enforce_document_access(document: Document, user: User) -> None:
 AI_METADATA_FIELDS = {"ai_title", "ai_summary", "ai_department", "ai_category", "ai_keywords", "ai_confidence"}
 
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(guard_primary_store)],
+)
 async def upload_document(
     background_tasks: BackgroundTasks,
     title: str = Form(..., min_length=1, max_length=255),
@@ -81,6 +89,14 @@ async def upload_document(
     # defaults to "english". Separate from OCR, which always reads eng+mar
     # regardless of this value - see app/core/config.py OCR_LANGUAGE.
     output_language: str | None = Form(None),
+    # Document Trust & Verification ("The Bad Reading") - optional provenance
+    # supplied at upload. All optional: anything omitted is shown as "Unknown"
+    # and never invented.
+    source_type: str | None = Form(None),
+    source_url: str | None = Form(None),
+    source_reference_no: str | None = Form(None),
+    source_published_date: str | None = Form(None),
+    issuing_organization: str | None = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -122,14 +138,33 @@ async def upload_document(
         uploaded_by=current_user.username,
         status="Pending",
         ai_output_language=resolved_output_language,
+        file_sha256=verification_service.sha256_of(content),
     )
     db.add(document)
     db.commit()
     db.refresh(document)
 
+    # Seed the verification row with whatever provenance we have now. The full
+    # trust assessment runs after OCR + AI (chained from ai_service).
+    resolved_source_type = verification_service.resolve_source_type(
+        db, document, (source_type or "").strip().lower() or None
+    )
+    verification_service.get_or_create(
+        db,
+        document,
+        source_type=resolved_source_type,
+        source_url=(source_url or "").strip() or None,
+        source_reference_no=(source_reference_no or "").strip() or None,
+        source_published_date=(source_published_date or "").strip() or None,
+        issuing_organization=(issuing_organization or "").strip() or None,
+    )
+
     audit_service.log_action(
         db, user=current_user.username, action="Upload", document_id=document.id, details=title,
     )
+    # "The Blackout" journal - document stored; OCR/AI journal their own
+    # start/complete inside the background tasks (see ocr_service/ai_service).
+    blackout.journal("upload", document.id, "completed", detail=title)
 
     # OCR runs after the response is sent (BackgroundTasks), so upload stays
     # fast regardless of file size. Marked "processing" synchronously, right
@@ -230,7 +265,12 @@ def list_documents(
         page=page,
         page_size=limit,
     )
-    return DocumentListResponse(**result)
+    response = DocumentListResponse(**result)
+    # Attach the compact trust/verification block to each item (one bulk query).
+    verifications = verification_service.compact_bulk(db, [item.id for item in response.items])
+    for item in response.items:
+        item.verification = verifications.get(item.id)
+    return response
 
 
 @router.get("/download/{document_id}")
@@ -260,15 +300,21 @@ def get_document(
     document_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Document:
+):
     document = db.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     _enforce_document_access(document, current_user)
-    return document
+    response = DocumentResponse.model_validate(document)
+    response.verification = verification_service.compact(db, document.id)
+    return response
 
 
-@router.post("/{document_id}/extract-text", response_model=DocumentResponse)
+@router.post(
+    "/{document_id}/extract-text",
+    response_model=DocumentResponse,
+    dependencies=[Depends(guard_primary_store)],
+)
 def extract_document_text(
     document_id: int,
     background_tasks: BackgroundTasks,
@@ -321,7 +367,11 @@ def extract_document_text(
         )
 
 
-@router.post("/{document_id}/extract-metadata", response_model=DocumentResponse)
+@router.post(
+    "/{document_id}/extract-metadata",
+    response_model=DocumentResponse,
+    dependencies=[Depends(guard_primary_store)],
+)
 def extract_document_metadata(
     document_id: int,
     background_tasks: BackgroundTasks,
@@ -355,7 +405,11 @@ def extract_document_metadata(
     return document
 
 
-@router.put("/{document_id}", response_model=DocumentResponse)
+@router.put(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    dependencies=[Depends(guard_primary_store)],
+)
 def update_document(
     document_id: int,
     updates: DocumentUpdate,
@@ -381,7 +435,11 @@ def update_document(
     return document
 
 
-@router.post("/{document_id}/review", response_model=DocumentResponse)
+@router.post(
+    "/{document_id}/review",
+    response_model=DocumentResponse,
+    dependencies=[Depends(guard_primary_store)],
+)
 def review_document(
     document_id: int,
     review: ReviewRequest,
@@ -417,7 +475,11 @@ def review_document(
     return document
 
 
-@router.post("/{document_id}/archive", response_model=DocumentResponse)
+@router.post(
+    "/{document_id}/archive",
+    response_model=DocumentResponse,
+    dependencies=[Depends(guard_primary_store)],
+)
 def archive_document(
     document_id: int,
     current_user: User = Depends(require_admin),
@@ -464,7 +526,11 @@ def export_summary_pdf(
     )
 
 
-@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(guard_primary_store)],
+)
 def delete_document(
     document_id: int,
     current_user: User = Depends(require_staff),

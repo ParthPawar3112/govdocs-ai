@@ -6,6 +6,7 @@ import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import StatusBadge from "../documents/StatusBadge";
 import HighlightedText from "../documents/HighlightedText";
+import VerificationBadge from "../verification/VerificationBadge";
 import { getSearchSnippet } from "../../utils/searchSnippet";
 import { formatDateTime, isImageFile } from "../../utils/format";
 
@@ -36,6 +37,12 @@ export default function SearchResultCard({ document: doc, query, onSelect }) {
               <HighlightedText text={doc.title} query={query} />
             </p>
             <StatusBadge status={doc.lifecycle_status} />
+            {doc.verification?.status && doc.verification.status !== "UNVERIFIED" && (
+              <VerificationBadge
+                status={doc.verification.status}
+                sourceLabel={doc.verification.source_type_label}
+              />
+            )}
           </div>
 
           {doc.ai_title && doc.ai_title !== doc.title && (

@@ -89,6 +89,32 @@ def ensure_review_columns(engine: Engine) -> None:
     )
 
 
+def ensure_document_provenance_columns(engine: Engine) -> None:
+    """Document Trust & Verification ('The Bad Reading') - the only column
+    that layer adds to the pre-existing `documents` table. Everything else
+    lives in its own new tables (created by create_all)."""
+    _ensure_columns(engine, "documents", {"file_sha256": "VARCHAR(64)"})
+
+
+def ensure_verification_currency_columns(engine: Engine) -> None:
+    """Feature 7 (outdated / superseded detection) - retrofits the currency
+    columns onto a document_verifications table created before this feature."""
+    _ensure_columns(
+        engine,
+        "document_verifications",
+        {
+            "currency_status": "VARCHAR(15) DEFAULT 'current'",
+            "superseded_by_document_id": "INTEGER",
+            "superseded_reason": "TEXT",
+        },
+    )
+    _ensure_columns(
+        engine,
+        "document_claims",
+        {"percentages": "JSON", "location": "VARCHAR(200)"},
+    )
+
+
 def ensure_ai_output_language_column(engine: Engine) -> None:
     """AI output-language toggle - per-upload choice of which language
     ai_title/ai_summary are written in. Nullable, no default at the SQL
