@@ -103,6 +103,24 @@ class AIConfigurationError(AIServiceError):
     worth retrying, unlike a transient network/parsing failure."""
 
 
+class AIQuotaError(AIServiceError):
+    """Gemini quota / rate limit hit (HTTP 429 RESOURCE_EXHAUSTED). A daily
+    free-tier quota will not clear in the next few seconds, so retrying just
+    burns more of it - treated as non-retryable, like AIConfigurationError."""
+
+
+def _looks_like_quota_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return (
+        "429" in text
+        or "resource_exhausted" in text
+        or "resource exhausted" in text
+        or "quota" in text
+        or "rate limit" in text
+        or "rate-limit" in text
+    )
+
+
 def _call_gemini(ocr_text: str, output_language: str = DEFAULT_OUTPUT_LANGUAGE) -> str:
     if not settings.GEMINI_API_KEY:
         raise AIConfigurationError(
@@ -134,6 +152,20 @@ def _call_gemini(ocr_text: str, output_language: str = DEFAULT_OUTPUT_LANGUAGE) 
             config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
     except Exception as exc:  # Gemini SDK errors, network errors, etc.
+        text = str(exc).lower()
+        if _looks_like_quota_error(exc):
+            raise AIQuotaError(
+                "Gemini quota/rate limit reached (HTTP 429). The free-tier daily limit is "
+                "per-model - wait for it to reset, switch GEMINI_MODEL in backend/.env to a "
+                "model with quota left (e.g. gemini-flash-lite-latest or gemini-3.5-flash), "
+                "or use a different API key/project."
+            ) from exc
+        if "404" in text or "not found" in text or "not available" in text or "no longer available" in text:
+            raise AIConfigurationError(
+                f"Gemini model '{settings.GEMINI_MODEL}' is not available for this API key. "
+                "Set GEMINI_MODEL in backend/.env to a supported model "
+                "(e.g. gemini-flash-lite-latest, gemini-3.5-flash, gemini-3-flash-preview)."
+            ) from exc
         raise AIServiceError(f"Gemini API call failed: {exc}") from exc
 
     if not response.text:
@@ -257,11 +289,12 @@ def process_document_ai(document_id: int) -> None:
                 )
                 _journal(document_id, "completed")
                 return
-            except AIConfigurationError as exc:
-                # Not worth retrying - a missing API key won't fix itself
-                # in the next 2 seconds. Fail immediately and clearly.
+            except (AIConfigurationError, AIQuotaError) as exc:
+                # Not worth retrying - a missing API key or an exhausted daily
+                # quota won't fix itself in the next 2 seconds, and retrying a
+                # 429 just consumes more of the quota. Fail immediately.
                 last_error = exc
-                logger.warning(f"AI metadata extraction misconfigured for document {document_id}: {exc}")
+                logger.warning(f"AI metadata extraction not retryable for document {document_id}: {exc}")
                 break
             except Exception as exc:  # noqa: BLE001 - genuinely want to retry on anything else
                 last_error = exc

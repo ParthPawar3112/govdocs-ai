@@ -44,7 +44,7 @@ from app.schemas.document import (
     FilterOptionsResponse,
     ReviewRequest,
 )
-from app.services import audit_service, export_service, file_storage, ocr_status
+from app.services import audit_service, document_check, export_service, file_storage, ocr_status
 from app.services import ai_status
 from app.services import blackout
 from app.services import search_service
@@ -116,6 +116,14 @@ async def upload_document(
 
     content = await file.read()
     extension = file_storage.validate_upload(file, content)
+
+    # Fast synchronous "is this actually a document?" gate. Rejects photos /
+    # selfies / screenshots BEFORE anything is stored, so non-documents never
+    # reach OCR, AI or the review queue.
+    try:
+        document_check.validate_is_document(content, extension)
+    except document_check.NotADocumentError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.reason)
 
     try:
         stored_filename, filepath = file_storage.save_file(content, extension)

@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     # lineup moves fast - if this model is retired by the time you're
     # running this, update this one value to whatever's current
     # (see https://ai.google.dev/gemini-api/docs/models), no code changes needed.
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-flash-lite-latest"
     # Default language for the AI-generated "title" and "summary" fields
     # ("english" | "marathi") when an upload doesn't specify one - see the
     # per-upload output_language form field on POST /documents/upload. This
